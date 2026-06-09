@@ -8,3 +8,4 @@ Thumbs.db
 resources/ffmpeg.exe
 resources/ffprobe.exe
 resources/yt-dlp.exe
+.claude/
