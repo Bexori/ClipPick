@@ -1,0 +1,10 @@
+node_modules/
+out/
+dist/
+dist-electron/
+*.log
+.DS_Store
+Thumbs.db
+resources/ffmpeg.exe
+resources/ffprobe.exe
+resources/yt-dlp.exe

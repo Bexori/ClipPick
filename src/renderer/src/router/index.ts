@@ -1,0 +1,29 @@
+import { createRouter, createWebHashHistory } from 'vue-router'
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes: [
+    {
+      path: '/',
+      name: 'Home',
+      component: () => import('../views/Home.vue')
+    },
+    {
+      path: '/tasks',
+      name: 'Tasks',
+      component: () => import('../views/Tasks.vue')
+    },
+    {
+      path: '/history',
+      name: 'History',
+      component: () => import('../views/History.vue')
+    },
+    {
+      path: '/settings',
+      name: 'Settings',
+      component: () => import('../views/Settings.vue')
+    }
+  ]
+})
+
+export default router
