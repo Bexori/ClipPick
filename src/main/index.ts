@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu } from 'electron'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc'
 import { YtDlpService } from './services/yt-dlp.service'
@@ -14,6 +14,7 @@ function createWindow(): void {
     height: 750,
     minWidth: 750,
     minHeight: 500,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -31,6 +32,8 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null)
+
   const ytDlp = new YtDlpService()
   const history = new HistoryService()
   const downloadManager = new DownloadManager()
