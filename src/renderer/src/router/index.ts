@@ -9,19 +9,9 @@ const router = createRouter({
       component: () => import('../views/Home.vue')
     },
     {
-      path: '/tasks',
-      name: 'Tasks',
-      component: () => import('../views/Tasks.vue')
-    },
-    {
       path: '/history',
       name: 'History',
       component: () => import('../views/History.vue')
-    },
-    {
-      path: '/settings',
-      name: 'Settings',
-      component: () => import('../views/Settings.vue')
     }
   ]
 })

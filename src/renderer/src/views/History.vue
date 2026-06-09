@@ -1,7 +1,7 @@
 <template>
   <div class="history-page">
     <div class="history-header">
-      <h2>下载记录</h2>
+      <h3>下载历史</h3>
       <el-button
         type="danger"
         plain
@@ -79,21 +79,19 @@ function handleOpenFolder(filepath: string) {
 
 <style scoped>
 .history-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 16px;
 }
 
-.history-header h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 800;
-  color: #f8fafc;
+.history-header h3 {
+  font-size: 18px;
+  font-weight: 600;
 }
 </style>

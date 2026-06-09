@@ -1,0 +1,25 @@
+appId: com.videobox.app
+productName: VideoBox
+directories:
+  output: dist-electron
+files:
+  - out/**/*
+  - package.json
+extraResources:
+  - from: resources/
+    to: resources/
+    filter:
+      - "**/*.exe"
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  signAndEditExecutable: false
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: VideoBox
+asarUnpack:
+  - "resources/**"

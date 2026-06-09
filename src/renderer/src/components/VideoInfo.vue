@@ -1,5 +1,5 @@
 <template>
-  <el-card v-if="info" class="video-info-card" shadow="never">
+  <el-card v-if="info" class="video-info-card">
     <el-row :gutter="20">
       <el-col :span="8">
         <el-image
@@ -64,7 +64,6 @@ function formatDuration(seconds: number): string {
 <style scoped>
 .video-info-card {
   margin-bottom: 16px;
-  border-radius: 12px;
 }
 
 .video-title {
@@ -76,13 +75,11 @@ function formatDuration(seconds: number): string {
   line-height: 1.4;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  color: #303133;
 }
 
 .video-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
+  gap: 20px;
   margin-bottom: 10px;
   color: #909399;
   font-size: 13px;

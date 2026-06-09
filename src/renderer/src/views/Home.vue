@@ -1,188 +1,206 @@
 <template>
-  <div class="download-page">
-    <!-- 1. URL 输入 -->
-    <UrlInputPanel
-      v-model:url="url"
-      :parsing="parsing"
-      :has-video="!!videoInfo"
-      @parse="handleParse"
-      @paste="handlePaste"
-      @clear="handleClear"
-    />
+  <div class="home-page">
+    <el-card class="input-card" shadow="never">
+      <div class="url-title">视频链接解析</div>
+      <el-input
+        v-model="url"
+        placeholder="粘贴视频链接到此处（支持 YouTube、Bilibili、Facebook、Twitter 等 1000+ 站点）"
+        size="large"
+        clearable
+        @keyup.enter="handleParse"
+        class="url-input"
+      >
+        <template #append>
+          <el-button
+            type="primary"
+            :loading="parsing"
+            :disabled="!url.trim()"
+            @click="handleParse"
+            class="parse-btn"
+          >
+            {{ parsing ? "解析中..." : "解析视频" }}
+          </el-button>
+        </template>
+      </el-input>
+      <div class="support-tips">
+        <el-icon class="tip-icon"><Check /></el-icon>
+        支持 YouTube、Bilibili、Facebook、Twitter 等 1000+ 站点视频解析下载
+      </div>
+    </el-card>
 
-    <!-- 错误提示 -->
     <el-alert
       v-if="error"
       :title="error"
       type="error"
       show-icon
       closable
-      style="margin-bottom: 8px"
+      style="margin-bottom: 16px"
       @close="error = ''"
     />
 
-    <!-- 2. 解析结果 -->
-    <ParseResultPanel
-      :status="pageStatus"
-      :video-info="videoInfo"
-    />
+    <VideoInfo v-if="videoInfo" :info="videoInfo" />
 
-    <!-- 3. 下载配置 -->
-    <DownloadConfig
-      :status="pageStatus"
-      :formats="videoInfo?.formats ?? []"
-      v-model="selectedFormat"
-      :save-path="savePath"
-      :downloading="pageStatus === 'downloading'"
-      @select-path="handleSelectPath"
-      @download="handleDownload"
-    />
+    <el-card v-if="videoInfo" class="action-card" shadow="never">
+      <el-row :gutter="20">
+        <el-col :span="16">
+          <div class="section-label">选择格式与清晰度</div>
+          <FormatSelector
+            v-model="selectedFormat"
+            :formats="videoInfo.formats"
+          />
+        </el-col>
+        <el-col :span="8">
+          <div class="section-label">保存到</div>
+          <el-input
+            :model-value="savePath"
+            placeholder="选择保存目录"
+            readonly
+            size="large"
+          >
+            <template #append>
+              <el-button @click="handleSelectPath">选择目录</el-button>
+            </template>
+          </el-input>
+        </el-col>
+      </el-row>
 
-    <!-- 4. 当前任务 -->
-    <CurrentTask
-      :task="activeTask"
-      @cancel="handleCancelTask"
-      @remove="handleRemoveTask"
-      @open-folder="handleOpenFolder"
-      @cancel-all="handleCancelAll"
-    />
+      <el-row class="download-row">
+        <el-col :span="24">
+          <el-button
+            type="primary"
+            size="large"
+            class="download-btn"
+            :disabled="!canDownload"
+            @click="handleDownload"
+          >
+            <el-icon><Download /></el-icon>
+            {{ downloadButtonText }}
+          </el-button>
+        </el-col>
+      </el-row>
+    </el-card>
+
+    <DownloadList v-if="activeTasks.length > 0" :tasks="activeTasks" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { useDownloadStore } from '../stores/download.store'
-import { useSettingsStore } from '../stores/settings.store'
-import { useHistoryStore } from '../stores/history.store'
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { ElMessage } from "element-plus";
+import { Check, Download } from "@element-plus/icons-vue";
+import VideoInfo from "../components/VideoInfo.vue";
+import FormatSelector from "../components/FormatSelector.vue";
+import DownloadList from "../components/DownloadList.vue";
+import { useDownloadStore } from "../stores/download.store";
+import { useSettingsStore } from "../stores/settings.store";
+import { useHistoryStore } from "../stores/history.store";
 import type {
   CompletePayload,
   ErrorPayload,
   ProgressPayload,
-} from '../../../shared/types'
-import UrlInputPanel from '../components/UrlInputPanel.vue'
-import ParseResultPanel from '../components/ParseResultPanel.vue'
-import DownloadConfig from '../components/DownloadConfig.vue'
-import CurrentTask from '../components/CurrentTask.vue'
+} from "../../../shared/types";
 
-const downloadStore = useDownloadStore()
-const settingsStore = useSettingsStore()
-const historyStore = useHistoryStore()
+const downloadStore = useDownloadStore();
+const settingsStore = useSettingsStore();
+const historyStore = useHistoryStore();
 
-// ---- 页面状态机 ----
-type PageStatus = 'empty' | 'parsing' | 'success' | 'downloading'
-const pageStatus = ref<PageStatus>('empty')
-const parsing = ref(false)
-const error = ref('')
+const url = ref("");
+const parsing = ref(false);
+const error = ref("");
+const selectedFormat = ref("");
+const savePath = ref("");
 
-// ---- 表单数据 ----
-const url = ref('')
-const selectedFormat = ref('')
-const savePath = ref('')
+let unsubProgress: (() => void) | null = null;
+let unsubComplete: (() => void) | null = null;
+let unsubError: (() => void) | null = null;
 
-// ---- 派生数据 ----
-const videoInfo = computed(() => downloadStore.videoInfo)
+const videoInfo = computed(() => downloadStore.videoInfo);
+const activeTasks = computed(() => downloadStore.activeTasks);
 
-const activeTask = computed(() => {
-  const tasks = downloadStore.activeTasks
-  return tasks.length > 0 ? tasks[0] : null
-})
+const canDownload = computed(
+  () => Boolean(videoInfo.value && selectedFormat.value && savePath.value),
+);
 
-// ---- IPC 监听 ----
-let unsubProgress: (() => void) | null = null
-let unsubComplete: (() => void) | null = null
-let unsubError: (() => void) | null = null
+const downloadButtonText = computed(() => {
+  if (!videoInfo.value) return "下载";
+  if (!selectedFormat.value) return "请选择清晰度";
+  if (!savePath.value) return "请选择保存目录";
+  return "开始下载";
+});
 
 onMounted(() => {
-  settingsStore.loadFromLocal()
+  settingsStore.loadFromLocal();
   if (settingsStore.defaultSavePath) {
-    savePath.value = settingsStore.defaultSavePath
+    savePath.value = settingsStore.defaultSavePath;
   }
 
-  unsubProgress = window.api.onDownloadProgress(handleProgress)
-  unsubComplete = window.api.onDownloadComplete(handleComplete)
-  unsubError = window.api.onDownloadError(handleError)
-})
+  unsubProgress = window.api.onDownloadProgress(handleProgress);
+  unsubComplete = window.api.onDownloadComplete(handleComplete);
+  unsubError = window.api.onDownloadError(handleError);
+});
 
 onUnmounted(() => {
-  unsubProgress?.()
-  unsubComplete?.()
-  unsubError?.()
-})
+  unsubProgress?.();
+  unsubComplete?.();
+  unsubError?.();
+});
 
-// ---- URL 操作 ----
-async function handlePaste() {
-  try {
-    const text = await navigator.clipboard.readText()
-    if (text) {
-      url.value = text.trim()
-    }
-  } catch {
-    // clipboard API may not be available
-  }
-}
-
-function handleClear() {
-  url.value = ''
-  error.value = ''
-  downloadStore.setVideoInfo(null)
-  selectedFormat.value = ''
-  pageStatus.value = 'empty'
-}
-
-// ---- 解析 ----
 async function handleParse() {
-  if (!url.value.trim()) return
+  if (!url.value.trim()) return;
 
-  parsing.value = true
-  error.value = ''
-  pageStatus.value = 'parsing'
+  parsing.value = true;
+  error.value = "";
 
   try {
-    const result = await window.api.parseVideo(url.value.trim())
-    downloadStore.setVideoInfo(result)
+    const result = await window.api.parseVideo(url.value.trim());
+    downloadStore.setVideoInfo(result);
 
     if (result.formats.length > 0) {
       const bestFormat =
-        result.formats.find(f => f.hasVideo && f.hasAudio && f.height >= 720)
-        || result.formats.find(f => f.hasVideo && f.hasAudio)
-        || result.formats[0]
-      selectedFormat.value = bestFormat.formatId
-    }
+        result.formats.find((format) => {
+          return format.hasVideo && format.hasAudio && format.height >= 720;
+        }) ||
+        result.formats.find((format) => {
+          return format.hasVideo && format.hasAudio;
+        }) ||
+        result.formats[0];
 
-    pageStatus.value = 'success'
+      selectedFormat.value = bestFormat.formatId;
+    }
   } catch (caughtError: unknown) {
-    error.value = caughtError instanceof Error ? caughtError.message : '解析失败'
-    downloadStore.setVideoInfo(null)
-    pageStatus.value = 'empty'
+    error.value =
+      caughtError instanceof Error ? caughtError.message : "解析失败";
+    downloadStore.setVideoInfo(null);
   } finally {
-    parsing.value = false
+    parsing.value = false;
   }
 }
 
-// ---- 保存路径 ----
 async function handleSelectPath() {
-  const result = await window.api.selectSavePath()
-  if (!result) return
-  savePath.value = result
-  settingsStore.defaultSavePath = result
+  const result = await window.api.selectSavePath();
+  if (!result) return;
+
+  savePath.value = result;
+  settingsStore.defaultSavePath = result;
 }
 
-// ---- 下载 ----
 async function handleDownload() {
-  if (!videoInfo.value || !selectedFormat.value || !savePath.value) return
+  if (!videoInfo.value || !selectedFormat.value || !savePath.value) return;
 
-  const format = videoInfo.value.formats.find(f => f.formatId === selectedFormat.value)
+  const format = videoInfo.value.formats.find((item) => {
+    return item.formatId === selectedFormat.value;
+  });
+
   const formatLabel = format
-    ? `${format.height > 0 ? `${format.height}p` : 'audio'} ${format.ext.toUpperCase()}`
-    : selectedFormat.value
+    ? `${format.height > 0 ? `${format.height}p` : "audio"} ${format.ext.toUpperCase()}`
+    : selectedFormat.value;
 
   const taskId = await window.api.startDownload({
     url: url.value.trim(),
     formatId: selectedFormat.value,
     outputDir: savePath.value,
     filename: videoInfo.value.title,
-  })
+  });
 
   downloadStore.addTask({
     taskId,
@@ -193,39 +211,38 @@ async function handleDownload() {
     formatLabel,
     outputDir: savePath.value,
     filename: videoInfo.value.title,
-    status: 'queued',
+    status: "queued",
     progress: 0,
-    speed: '',
-    eta: '',
+    speed: "",
+    eta: "",
     downloadedBytes: 0,
     totalBytes: 0,
     createdAt: new Date().toISOString(),
-  })
+  });
 
-  pageStatus.value = 'downloading'
-  ElMessage.success('已添加到下载队列')
+  ElMessage.success("已添加到下载队列");
 }
 
-// ---- 下载进度回调 ----
 function handleProgress(data: ProgressPayload) {
   downloadStore.updateTask(data.taskId, {
-    status: data.status === 'post-processing' ? 'post-processing' : 'downloading',
+    status:
+      data.status === "post-processing" ? "post-processing" : "downloading",
     progress: data.percentage,
     speed: data.speed,
     eta: data.eta,
     downloadedBytes: data.downloadedBytes,
     totalBytes: data.totalBytes,
-  })
+  });
 }
 
 function handleComplete(data: CompletePayload) {
   downloadStore.updateTask(data.taskId, {
-    status: 'completed',
+    status: "completed",
     progress: 100,
     completedAt: new Date().toISOString(),
-  })
+  });
 
-  const task = downloadStore.tasks.find(t => t.taskId === data.taskId)
+  const task = downloadStore.tasks.find((item) => item.taskId === data.taskId);
   if (task) {
     historyStore.addEntry({
       id: data.taskId,
@@ -237,58 +254,86 @@ function handleComplete(data: CompletePayload) {
       filepath: data.filepath,
       filesize: data.filesize,
       duration: 0,
-      status: 'completed',
+      status: "completed",
       downloadedAt: new Date().toISOString(),
-    })
+    });
   }
 
-  pageStatus.value = 'success'
-  ElMessage.success(`${task?.title ?? '视频'} 下载完成`)
+  ElMessage.success(`${task?.title ?? "视频"} 下载完成`);
 }
 
 function handleError(data: ErrorPayload) {
   downloadStore.updateTask(data.taskId, {
-    status: 'error',
+    status: "error",
     error: data.error,
-  })
-  pageStatus.value = 'success'
-  ElMessage.error(data.error)
-}
-
-// ---- 任务操作 ----
-async function handleCancelTask(taskId: string) {
-  await window.api.cancelDownload(taskId)
-  downloadStore.updateTask(taskId, { status: 'cancelled' })
-}
-
-function handleRemoveTask(taskId: string) {
-  downloadStore.removeTask(taskId)
-  if (downloadStore.activeTasks.length === 0) {
-    pageStatus.value = 'success'
-  }
-}
-
-function handleOpenFolder(taskId: string) {
-  const task = downloadStore.tasks.find(t => t.taskId === taskId)
-  if (task) {
-    window.api.openFileInFolder(task.outputDir)
-  }
-}
-
-function handleCancelAll() {
-  // Cancel all active tasks
-  for (const t of downloadStore.activeTasks) {
-    window.api.cancelDownload(t.taskId)
-    downloadStore.updateTask(t.taskId, { status: 'cancelled' })
-  }
-  pageStatus.value = 'success'
+  });
+  ElMessage.error(data.error);
 }
 </script>
 
 <style scoped>
-.download-page {
+.home-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+.input-card {
+  margin-bottom: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.url-title {
+  margin-bottom: 12px;
+  color: #333;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.url-input {
+  border-radius: 8px;
+}
+
+.parse-btn {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.support-tips {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #666;
+  font-size: 13px;
+}
+
+.tip-icon {
+  color: #00c48c;
+  font-size: 14px;
+}
+
+.action-card {
+  margin-bottom: 20px;
+  padding: 20px 24px;
+  border-radius: 12px;
+}
+
+.section-label {
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.download-row {
+  margin-top: 20px;
+}
+
+.download-btn {
+  width: 100%;
+  height: 46px;
+  font-size: 16px;
 }
 </style>

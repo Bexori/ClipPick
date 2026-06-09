@@ -1,45 +1,49 @@
 <template>
-  <div class="download-progress">
-    <div class="progress-header">
-      <span class="title" :title="task.title">{{ task.title }}</span>
-      <el-tag :type="statusType" size="small" class="status-tag">{{ statusText }}</el-tag>
+  <div class="download-item">
+    <div class="download-header">
+      <span class="download-title">{{ task.title }}</span>
+      <el-tag :type="statusType" size="small">{{ statusText }}</el-tag>
     </div>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar">
-        <div
-          class="progress-fill"
-          :class="{ 'is-error': task.status === 'error', 'is-done': task.status === 'completed', 'is-indeterminate': task.status === 'post-processing' }"
-          :style="{ width: task.status === 'post-processing' ? '100%' : task.progress + '%' }"
-        />
-      </div>
-    </div>
-    <div class="progress-stats">
+
+    <el-progress
+      :percentage="task.progress"
+      :status="task.status === 'error' ? 'exception' : task.status === 'completed' ? 'success' : undefined"
+      :indeterminate="task.status === 'post-processing'"
+      style="margin: 8px 0"
+    />
+
+    <div class="download-stats">
       <span v-if="task.speed">{{ task.speed }}</span>
       <span v-if="task.eta">剩余 {{ task.eta }}</span>
       <span v-if="task.totalBytes > 0">
         {{ formatBytes(task.downloadedBytes) }} / {{ formatBytes(task.totalBytes) }}
       </span>
-      <span class="format-badge">{{ task.formatLabel }}</span>
-      <span v-if="task.error" class="error-text">{{ task.error }}</span>
+      <span class="format-label">{{ task.formatLabel }}</span>
     </div>
-    <div class="progress-actions">
+
+    <div v-if="task.error" class="download-error">
+      {{ task.error }}
+    </div>
+
+    <div class="download-actions" v-if="task.status !== 'completed' && task.status !== 'error'">
       <el-button
         v-if="task.status === 'downloading'"
         type="danger"
         size="small"
-        text
+        plain
         @click="$emit('cancel', task.taskId)"
       >
         取消
       </el-button>
+    </div>
+    <div class="download-actions" v-else-if="task.status === 'completed'">
       <el-button
-        v-else-if="task.status === 'completed'"
-        type="primary"
+        type="success"
         size="small"
-        text
+        plain
         @click="$emit('openFolder', task.taskId)"
       >
-        <el-icon><FolderOpened /></el-icon>
+        打开文件位置
       </el-button>
     </div>
   </div>
@@ -47,7 +51,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FolderOpened } from '@element-plus/icons-vue'
 import type { DownloadTask } from '../../../shared/types'
 
 const props = defineProps<{
@@ -82,90 +85,50 @@ function formatBytes(bytes: number): string {
 </script>
 
 <style scoped>
-.download-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 0;
-  font-size: 12px;
+.download-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #ebeef5;
 }
 
-.progress-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  width: 200px;
-  flex-shrink: 0;
+.download-item:last-child {
+  border-bottom: none;
 }
 
-.title {
+.download-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.download-title {
+  font-size: 14px;
+  font-weight: 500;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #303133;
-  font-weight: 500;
+  margin-right: 12px;
 }
 
-.status-tag {
-  flex-shrink: 0;
-}
-
-.progress-bar-wrap {
-  flex: 1;
-  min-width: 80px;
-}
-
-.progress-bar {
-  height: 4px;
-  background: #ebeef5;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #409eff;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.progress-fill.is-indeterminate {
-  animation: indeterminate 1.5s ease-in-out infinite;
-  width: 100% !important;
-}
-
-@keyframes indeterminate {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.progress-fill.is-done {
-  background: #67c23a;
-}
-
-.progress-fill.is-error {
-  background: #f56c6c;
-}
-
-.progress-stats {
+.download-stats {
   display: flex;
-  gap: 10px;
+  gap: 16px;
+  font-size: 12px;
   color: #909399;
-  white-space: nowrap;
-  font-size: 11px;
-  flex-shrink: 0;
+  margin-top: 4px;
 }
 
-.format-badge {
+.format-label {
   color: #c0c4cc;
 }
 
-.error-text {
+.download-error {
+  font-size: 12px;
   color: #f56c6c;
+  margin-top: 4px;
 }
 
-.progress-actions {
-  flex-shrink: 0;
+.download-actions {
+  margin-top: 8px;
 }
 </style>

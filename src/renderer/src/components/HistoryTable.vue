@@ -1,5 +1,5 @@
 <template>
-  <el-card shadow="never">
+  <el-card>
     <el-table
       :data="entries"
       v-loading="loading"
@@ -11,7 +11,7 @@
         <template #default="{ row }">
           <el-image
             :src="row.thumbnail"
-            style="width: 80px; height: 45px; border-radius: 6px"
+            style="width: 80px; height: 45px; border-radius: 4px"
             fit="cover"
           >
             <template #error>
@@ -47,22 +47,20 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <el-button
             v-if="row.status === 'completed'"
             size="small"
             @click="$emit('openFolder', row.filepath)"
           >
-            <el-icon><FolderOpened /></el-icon>
-            打开位置
+            打开
           </el-button>
           <el-button
             v-if="row.status === 'completed'"
             size="small"
             @click="$emit('process', row.filepath)"
           >
-            <el-icon><VideoPlay /></el-icon>
             处理
           </el-button>
           <el-button
@@ -79,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { FolderOpened, VideoCamera, VideoPlay } from '@element-plus/icons-vue'
+import { VideoCamera } from '@element-plus/icons-vue'
 import type { HistoryEntry } from '../../../shared/types'
 
 defineProps<{
@@ -114,11 +112,11 @@ function formatDate(iso: string): string {
 .thumb-placeholder {
   width: 80px;
   height: 45px;
-  background: rgba(8, 17, 35, 0.46);
+  background: #f0f2f5;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #697893;
-  border-radius: 6px;
+  color: #c0c4cc;
+  border-radius: 4px;
 }
 </style>
