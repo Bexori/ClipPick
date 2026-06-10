@@ -15,6 +15,7 @@ export const IpcChannels = {
   // Dialog
   DIALOG_SELECT_PATH: 'dialog:select-path',
   DIALOG_OPEN_FILE: 'dialog:open-file',
+  PATH_RESOLVE: 'path:resolve',
 
   // FFmpeg
   FFMPEG_CONVERT: 'ffmpeg:convert',
@@ -28,6 +29,10 @@ export const IpcChannels = {
   HISTORY_ADD: 'history:add',
   HISTORY_DELETE: 'history:delete',
   HISTORY_CLEAR: 'history:clear',
+
+  // Settings
+  SETTINGS_GET: 'settings:get',
+  SETTINGS_UPDATE: 'settings:update',
 
   // App
   APP_GET_VERSION: 'app:get-version',
@@ -74,6 +79,20 @@ export interface StartDownloadRequest {
   filename: string
 }
 
+export type CookieMode = 'auto' | 'browser' | 'file' | 'none'
+export type CookieBrowser = 'edge' | 'chrome' | 'brave' | 'vivaldi'
+
+export interface AppSettings {
+  defaultSavePath: string
+  concurrentDownloads: number
+  cookieMode: CookieMode
+  cookieBrowser: CookieBrowser
+  cookiesFile: string
+  proxy: string
+  downloadNotifications: boolean
+  autoRetryCount: number
+}
+
 export type DownloadStatus =
   | 'queued' | 'downloading' | 'post-processing'
   | 'completed' | 'cancelled' | 'error'
@@ -84,6 +103,7 @@ export interface DownloadTask {
   title: string
   thumbnail: string
   url: string
+  formatId: string
   formatLabel: string
   outputDir: string
   filename: string
@@ -94,6 +114,9 @@ export interface DownloadTask {
   downloadedBytes: number
   totalBytes: number
   error?: string
+  errorDetail?: string
+  retryCount?: number
+  maxRetries?: number
   createdAt: string
   completedAt?: string
 }
@@ -117,6 +140,21 @@ export interface CompletePayload {
 export interface ErrorPayload {
   taskId: string
   error: string
+  detail?: string
+}
+
+export interface OpenPathResult {
+  ok: boolean
+  message?: string
+}
+
+export interface ResolvePathResult {
+  ok: boolean
+  inputPath: string
+  resolvedPath: string
+  displayName: string
+  parentDir: string
+  message?: string
 }
 
 // ============ 历史记录 ============

@@ -1,25 +1,27 @@
 <template>
-  <el-card class="download-list-card">
-    <template #header>
-      <div class="card-header">
-        <span>下载队列</span>
-        <span class="sub-text">{{ tasks.length }} 个任务</span>
-      </div>
-    </template>
-    <div v-if="tasks.length === 0" class="empty-state">
-      <el-icon :size="40"><VideoPlay /></el-icon>
+  <div class="dl-list">
+    <div class="dl-header">
+      <h3 class="dl-title">下载队列</h3>
+      <span class="dl-count">{{ tasks.length }} 个任务</span>
+    </div>
+
+    <div v-if="tasks.length === 0" class="dl-empty">
+      <el-icon :size="36"><VideoPlay /></el-icon>
       <p>暂无下载任务</p>
     </div>
+
     <div v-else>
       <DownloadProgress
         v-for="task in tasks"
         :key="task.taskId"
         :task="task"
         @cancel="handleCancel"
+        @retry="$emit('retry', $event)"
+        @remove="store.removeTask($event)"
         @open-folder="handleOpenFolder"
       />
     </div>
-  </el-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -30,6 +32,10 @@ import { useDownloadStore } from "../stores/download.store";
 
 defineProps<{
   tasks: DownloadTask[];
+}>();
+
+defineEmits<{
+  retry: [taskId: string];
 }>();
 
 const store = useDownloadStore();
@@ -48,31 +54,38 @@ function handleOpenFolder(taskId: string) {
 </script>
 
 <style scoped>
-.download-list-card {
-  margin-bottom: 20px;
+.dl-list {
+  background: var(--vb-bg-surface);
+  border: 1px solid var(--vb-border);
+  border-radius: var(--vb-radius);
+  padding: 20px;
 }
 
-.card-header {
+.dl-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.dl-title {
+  font-size: 15px;
   font-weight: 600;
+  color: var(--vb-text);
 }
 
-.sub-text {
-  color: #909399;
+.dl-count {
   font-size: 12px;
-  font-weight: 400;
+  color: var(--vb-text-tertiary);
 }
 
-.empty-state {
-  padding: 40px 0;
-  color: #c0c4cc;
+.dl-empty {
   text-align: center;
+  padding: 32px 0;
+  color: var(--vb-text-tertiary);
 }
-
-.empty-state p {
-  margin-top: 12px;
-  font-size: 14px;
+.dl-empty p {
+  margin-top: 10px;
+  font-size: 13px;
 }
 </style>

@@ -1,7 +1,39 @@
-import { spawn } from 'child_process'
 import { randomUUID } from 'crypto'
-import type { StartDownloadRequest, ProgressPayload, CompletePayload } from '../../shared/types'
+import * as fs from 'fs'
+import * as path from 'path'
 import { getFfmpegPath } from '../utils/paths'
+import { spawnSafe } from '../utils/spawn-safe'
+
+/**
+ * Create a safe ASCII path on the same volume for FFmpeg.
+ * Uses hard links when possible, copy as fallback (different volumes).
+ */
+function safePathForFfmpeg(originalPath: string, tag: string): { safePath: string; cleanup: () => void } {
+  // Already ASCII-safe, no transformation needed
+  if (!/[^\x00-\x7F]/.test(originalPath)) {
+    return { safePath: originalPath, cleanup: () => {} }
+  }
+
+  const dir = path.dirname(originalPath)
+  const ext = path.extname(originalPath)
+  const safeName = `_vb_${tag}_${Date.now()}${ext}`
+  const safePath = path.join(dir, safeName)
+
+  // Try hard link first (instant, no copy)
+  try {
+    fs.linkSync(originalPath, safePath)
+    return { safePath, cleanup: () => { try { fs.unlinkSync(safePath) } catch { /* ignore */ } } }
+  } catch {
+    // Hard link failed, try copy
+    try {
+      fs.copyFileSync(originalPath, safePath)
+      return { safePath, cleanup: () => { try { fs.unlinkSync(safePath) } catch { /* ignore */ } } }
+    } catch {
+      // Both failed, fall back to original path
+      return { safePath: originalPath, cleanup: () => {} }
+    }
+  }
+}
 
 export class FfmpegService {
   private binaryPath: string
@@ -20,15 +52,19 @@ export class FfmpegService {
     const taskId = randomUUID()
     const ext = req.outputFormat
     const baseName = req.outputFilename ||
-      require('path').basename(req.inputPath, require('path').extname(req.inputPath))
-    const outputDir = req.outputDir || require('path').dirname(req.inputPath)
-    const outputPath = require('path').join(outputDir, `${baseName}.${ext}`)
+      path.basename(req.inputPath, path.extname(req.inputPath))
+    const outputDir = req.outputDir || path.dirname(req.inputPath)
+    const outputPath = path.join(outputDir, `${baseName}.${ext}`)
 
-    this.getDuration(req.inputPath).then(duration => {
-      const args = ['-i', req.inputPath, '-progress', 'pipe:1', '-y', outputPath]
-      const proc = spawn(this.binaryPath, args)
+    // Create safe ASCII paths for FFmpeg on Windows
+    const inputSafe = safePathForFfmpeg(req.inputPath, 'in')
+    const outputSafe = safePathForFfmpeg(outputPath, 'out')
 
-      this.tasks.set(taskId, { proc, outputPath })
+    this.getDuration(inputSafe.safePath).then(duration => {
+      const args = ['-i', inputSafe.safePath, '-progress', 'pipe:1', '-y', outputSafe.safePath]
+      const proc = spawnSafe(this.binaryPath, args)
+
+      this.tasks.set(taskId, { proc, outputPath, cleanup: () => { inputSafe.cleanup(); outputSafe.cleanup() } })
 
       let stderrAll = ''
       proc.stderr.on('data', (data: Buffer) => {
@@ -46,10 +82,21 @@ export class FfmpegService {
       })
 
       proc.on('close', (code) => {
+        const cleanup = this.tasks.get(taskId)?.cleanup
         this.tasks.delete(taskId)
+
         if (code === 0) {
-          onComplete({ taskId, outputPath })
+          // If output was written to safe path, move to real path
+          if (outputSafe.safePath !== outputPath) {
+            try {
+              if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
+              fs.renameSync(outputSafe.safePath, outputPath)
+            } catch { /* rename failed, keep safe path as result */ }
+          }
+          cleanup?.()
+          onComplete({ taskId, outputPath: fs.existsSync(outputPath) ? outputPath : outputSafe.safePath })
         } else {
+          cleanup?.()
           onError({ taskId, error: `FFmpeg 退出码 ${code}: ${stderrAll.slice(-200)}` })
         }
       })
@@ -67,20 +114,24 @@ export class FfmpegService {
     const taskId = randomUUID()
     const ext = req.outputFormat
     const baseName = req.outputFilename ||
-      require('path').basename(req.inputPath, require('path').extname(req.inputPath))
-    const outputDir = req.outputDir || require('path').dirname(req.inputPath)
-    const outputPath = require('path').join(outputDir, `${baseName}.${ext}`)
+      path.basename(req.inputPath, path.extname(req.inputPath))
+    const outputDir = req.outputDir || path.dirname(req.inputPath)
+    const outputPath = path.join(outputDir, `${baseName}.${ext}`)
 
     const codecMap: Record<string, string> = {
       mp3: 'libmp3lame', flac: 'flac', aac: 'aac', wav: 'pcm_s16le', opus: 'libopus', m4a: 'aac'
     }
     const codec = codecMap[ext] || 'copy'
 
-    this.getDuration(req.inputPath).then(duration => {
-      const args = ['-i', req.inputPath, '-vn', '-c:a', codec, '-progress', 'pipe:1', '-y', outputPath]
-      const proc = spawn(this.binaryPath, args)
+    // Create safe ASCII paths for FFmpeg on Windows
+    const inputSafe = safePathForFfmpeg(req.inputPath, 'in')
+    const outputSafe = safePathForFfmpeg(outputPath, 'out')
 
-      this.tasks.set(taskId, { proc, outputPath })
+    this.getDuration(inputSafe.safePath).then(duration => {
+      const args = ['-i', inputSafe.safePath, '-vn', '-c:a', codec, '-progress', 'pipe:1', '-y', outputSafe.safePath]
+      const proc = spawnSafe(this.binaryPath, args)
+
+      this.tasks.set(taskId, { proc, outputPath, cleanup: () => { inputSafe.cleanup(); outputSafe.cleanup() } })
 
       let stderrAll = ''
       proc.stderr.on('data', (data: Buffer) => {
@@ -98,10 +149,20 @@ export class FfmpegService {
       })
 
       proc.on('close', (code) => {
+        const cleanup = this.tasks.get(taskId)?.cleanup
         this.tasks.delete(taskId)
+
         if (code === 0) {
-          onComplete({ taskId, outputPath })
+          if (outputSafe.safePath !== outputPath) {
+            try {
+              if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
+              fs.renameSync(outputSafe.safePath, outputPath)
+            } catch { /* rename failed */ }
+          }
+          cleanup?.()
+          onComplete({ taskId, outputPath: fs.existsSync(outputPath) ? outputPath : outputSafe.safePath })
         } else {
+          cleanup?.()
           onError({ taskId, error: `FFmpeg 退出码 ${code}: ${stderrAll.slice(-200)}` })
         }
       })
@@ -112,7 +173,7 @@ export class FfmpegService {
 
   private getDuration(inputPath: string): Promise<number> {
     return new Promise((resolve) => {
-      const proc = spawn(this.binaryPath, ['-i', inputPath, '-f', 'null', '-'])
+      const proc = spawnSafe(this.binaryPath, ['-i', inputPath, '-f', 'null', '-'])
       let stderr = ''
       const timer = setTimeout(() => {
         proc.kill()

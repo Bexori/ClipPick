@@ -1,5 +1,5 @@
 <template>
-  <el-card>
+  <div class="history-table-wrap">
     <el-table
       :data="entries"
       v-loading="loading"
@@ -15,7 +15,7 @@
             fit="cover"
           >
             <template #error>
-              <div class="thumb-placeholder">
+              <div class="thumb-fb">
                 <el-icon><VideoCamera /></el-icon>
               </div>
             </template>
@@ -25,55 +25,57 @@
 
       <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
 
-      <el-table-column prop="formatLabel" label="格式" width="100" />
+      <el-table-column prop="formatLabel" label="格式" width="90" />
 
-      <el-table-column label="大小" width="100">
+      <el-table-column label="大小" width="90">
         <template #default="{ row }">
           {{ formatBytes(row.filesize) }}
         </template>
       </el-table-column>
 
-      <el-table-column label="时间" width="170" sortable="custom">
+      <el-table-column label="时间" width="160" sortable="custom">
         <template #default="{ row }">
           {{ formatDate(row.downloadedAt) }}
         </template>
       </el-table-column>
 
-      <el-table-column label="状态" width="80">
+      <el-table-column label="状态" width="70">
         <template #default="{ row }">
-          <el-tag :type="row.status === 'completed' ? 'success' : 'danger'" size="small">
-            {{ row.status === 'completed' ? '完成' : row.status === 'error' ? '失败' : '取消' }}
-          </el-tag>
+          <span class="status-dot" :class="row.status" />
+          {{ statusLabel(row.status) }}
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="240" fixed="right">
+      <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
-          <el-button
-            v-if="row.status === 'completed'"
-            size="small"
-            @click="$emit('openFolder', row.filepath)"
-          >
-            打开
-          </el-button>
-          <el-button
-            v-if="row.status === 'completed'"
-            size="small"
-            @click="$emit('process', row.filepath)"
-          >
-            处理
-          </el-button>
-          <el-button
-            size="small"
-            type="danger"
-            @click="$emit('delete', row.id)"
-          >
-            删除
-          </el-button>
+          <div class="action-cell">
+            <el-button
+              v-if="row.status === 'completed'"
+              size="small"
+              @click="$emit('openFolder', row.filepath)"
+            >
+              打开
+            </el-button>
+            <el-button
+              v-if="row.status === 'completed'"
+              size="small"
+              @click="$emit('process', row.filepath)"
+            >
+              处理
+            </el-button>
+            <el-button
+              size="small"
+              type="danger"
+              plain
+              @click="$emit('delete', row.id)"
+            >
+              删除
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
-  </el-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -90,6 +92,12 @@ defineEmits<{
   process: [filepath: string]
   openFolder: [filepath: string]
 }>()
+
+function statusLabel(s: string): string {
+  if (s === 'completed') return '完成'
+  if (s === 'error') return '失败'
+  return '取消'
+}
 
 function formatBytes(bytes: number): string {
   if (!bytes) return '--'
@@ -109,14 +117,38 @@ function formatDate(iso: string): string {
 </script>
 
 <style scoped>
-.thumb-placeholder {
+.history-table-wrap {
+  background: var(--vb-bg-surface);
+  border: 1px solid var(--vb-border);
+  border-radius: var(--vb-radius);
+  overflow: hidden;
+}
+
+.thumb-fb {
   width: 80px;
   height: 45px;
-  background: #f0f2f5;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c0c4cc;
+  background: var(--vb-bg-hover);
+  color: var(--vb-text-tertiary);
   border-radius: 4px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.status-dot.completed { background: var(--vb-success); }
+.status-dot.error     { background: var(--vb-danger); }
+.status-dot.cancelled { background: var(--vb-text-tertiary); }
+
+.action-cell {
+  display: flex;
+  gap: 6px;
 }
 </style>

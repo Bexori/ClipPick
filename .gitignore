@@ -8,4 +8,7 @@ Thumbs.db
 resources/ffmpeg.exe
 resources/ffprobe.exe
 resources/yt-dlp.exe
+resources/deno.exe
+downloads/*
+!downloads/.gitkeep
 .claude/

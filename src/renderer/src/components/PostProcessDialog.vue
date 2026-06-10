@@ -1,28 +1,54 @@
 <template>
   <el-dialog
     :model-value="visible"
-    @update:model-value="onVisibleChange"
     title="音视频处理"
-    width="480px"
+    width="560px"
     :close-on-click-modal="false"
+    @update:model-value="onVisibleChange"
   >
     <div v-if="!filepath" class="no-file">
       <p>请从历史记录中选择一个已下载的文件</p>
     </div>
     <template v-else>
-      <div class="file-info">
-        <el-icon><FolderOpened /></el-icon>
-        <span class="file-path">{{ filepath }}</span>
+      <div
+        class="file-card"
+        :class="{
+          warning: resolvedInfo && !resolvedInfo.ok,
+          recovered: resolvedInfo?.ok && resolvedInfo?.inputPath !== resolvedInfo?.resolvedPath
+        }"
+      >
+        <div class="file-icon">
+          <el-icon><FolderOpened /></el-icon>
+        </div>
+        <div class="file-copy">
+          <strong>{{ resolvedInfo?.displayName || fileName(filepath) }}</strong>
+          <span>{{ resolvedInfo?.resolvedPath || filepath }}</span>
+          <em v-if="resolvedInfo?.message" :class="{ success: resolvedInfo.ok }">
+            {{ resolvedInfo.message }}
+          </em>
+        </div>
       </div>
 
       <el-divider />
 
-      <el-radio-group v-model="processType" style="margin-bottom: 16px">
-        <el-radio value="convert">格式转换</el-radio>
-        <el-radio value="extract-audio">提取音频</el-radio>
-      </el-radio-group>
+      <div class="type-switch">
+        <button
+          type="button"
+          :class="{ active: processType === 'convert' }"
+          @click="processType = 'convert'"
+        >
+          格式转换
+        </button>
+        <button
+          type="button"
+          :class="{ active: processType === 'extract-audio' }"
+          @click="processType = 'extract-audio'"
+        >
+          提取音频
+        </button>
+      </div>
 
-      <el-form label-width="80px">
+      <el-form label-width="80px" class="process-form">
         <el-form-item label="输出格式">
           <el-select v-model="outputFormat" style="width: 100%">
             <template v-if="processType === 'convert'">
@@ -43,22 +69,22 @@
         </el-form-item>
       </el-form>
 
-      <div v-if="processing" class="process-progress">
+      <div v-if="processing" class="pp-progress">
         <el-progress :percentage="ffmpegProgress" :indeterminate="ffmpegProgress === 0" />
-        <p class="progress-text">
-          {{ ffmpegComplete ? '处理完成!' : '正在处理...' }}
+        <p class="pp-text">
+          {{ ffmpegComplete ? '处理完成' : '正在处理...' }}
         </p>
-        <p v-if="ffmpegError" class="error-text">{{ ffmpegError }}</p>
+        <p v-if="ffmpegError" class="pp-error">{{ ffmpegError }}</p>
       </div>
     </template>
 
     <template #footer>
-      <el-button @click="handleClose" :disabled="processing">取消</el-button>
+      <el-button :disabled="processing" @click="handleClose">取消</el-button>
       <el-button
         type="primary"
-        @click="handleStart"
-        :disabled="!filepath || processing"
+        :disabled="!canProcess"
         :loading="processing"
+        @click="handleStart"
       >
         {{ processing ? '处理中...' : '开始处理' }}
       </el-button>
@@ -67,9 +93,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { FolderOpened } from '@element-plus/icons-vue'
+import type { ResolvePathResult } from '../../../shared/types'
 
 const props = defineProps<{
   visible: boolean
@@ -86,36 +113,51 @@ const processing = ref(false)
 const ffmpegProgress = ref(0)
 const ffmpegComplete = ref(false)
 const ffmpegError = ref('')
+const resolvedInfo = ref<ResolvePathResult | null>(null)
 
 let unsubProgress: (() => void) | null = null
 let unsubComplete: (() => void) | null = null
 let unsubError: (() => void) | null = null
 
+const canProcess = computed(() => Boolean(resolvedInfo.value?.ok && !processing.value))
+
 watch(processType, (val) => {
   outputFormat.value = val === 'convert' ? 'mp4' : 'mp3'
 })
 
-watch(() => props.visible, (val) => {
+watch(() => props.visible, async (val) => {
   if (val) {
-    ffmpegProgress.value = 0
-    ffmpegComplete.value = false
-    ffmpegError.value = ''
-    processing.value = false
+    resetState()
+    resolvedInfo.value = props.filepath ? await window.api.resolvePath(props.filepath) : null
+    if (resolvedInfo.value?.message) {
+      if (resolvedInfo.value.ok) ElMessage.success(resolvedInfo.value.message)
+      else ElMessage.warning(resolvedInfo.value.message)
+    }
     unsubProgress = window.api.onFfmpegProgress(handleProgress)
     unsubComplete = window.api.onFfmpegComplete(handleComplete)
     unsubError = window.api.onFfmpegError(handleError)
   } else {
-    unsubProgress?.()
-    unsubComplete?.()
-    unsubError?.()
+    unsubscribe()
   }
 })
 
-onUnmounted(() => {
+onUnmounted(unsubscribe)
+
+function resetState() {
+  ffmpegProgress.value = 0
+  ffmpegComplete.value = false
+  ffmpegError.value = ''
+  processing.value = false
+}
+
+function unsubscribe() {
   unsubProgress?.()
   unsubComplete?.()
   unsubError?.()
-})
+  unsubProgress = null
+  unsubComplete = null
+  unsubError = null
+}
 
 function handleProgress(data: { taskId: string; percentage: number }) {
   ffmpegProgress.value = data.percentage
@@ -135,7 +177,8 @@ function handleError(data: { taskId: string; error: string }) {
 }
 
 async function handleStart() {
-  if (!props.filepath || processing.value) return
+  const inputPath = resolvedInfo.value?.resolvedPath
+  if (!inputPath || !resolvedInfo.value?.ok || processing.value) return
 
   processing.value = true
   ffmpegProgress.value = 0
@@ -145,12 +188,12 @@ async function handleStart() {
   try {
     if (processType.value === 'convert') {
       await window.api.convertVideo({
-        inputPath: props.filepath,
+        inputPath,
         outputFormat: outputFormat.value
       })
     } else {
       await window.api.extractAudio({
-        inputPath: props.filepath,
+        inputPath,
         outputFormat: outputFormat.value
       })
     }
@@ -166,49 +209,130 @@ function onVisibleChange(val: boolean) {
 
 function handleClose() {
   if (!processing.value) {
-    ffmpegComplete.value = false
-    ffmpegError.value = ''
+    resetState()
     emit('update:visible', false)
   }
+}
+
+function fileName(filepath: string): string {
+  return filepath.split(/[\\/]/).filter(Boolean).pop() || filepath
 }
 </script>
 
 <style scoped>
-.file-info {
+.file-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #606266;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--vb-border);
+  border-radius: var(--vb-radius-sm);
+  background: var(--vb-bg-elevated);
 }
 
-.file-path {
+.file-card.warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: var(--vb-warning-bg);
+}
+
+.file-card.recovered {
+  border-color: rgba(16, 185, 129, 0.28);
+  background: var(--vb-success-bg);
+}
+
+.file-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--vb-radius-sm);
+  background: #fff;
+  color: var(--vb-accent);
+}
+
+.file-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.file-copy strong {
+  color: var(--vb-text);
+  font-size: 14px;
+}
+
+.file-copy span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--vb-text-secondary);
+  font-size: 12px;
+}
+
+.file-copy em {
+  color: #a16207;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.file-copy em.success {
+  color: #059669;
 }
 
 .no-file {
   text-align: center;
-  color: #909399;
+  color: var(--vb-text-tertiary);
   padding: 20px 0;
 }
 
-.process-progress {
+.type-switch {
+  display: flex;
+  background: var(--vb-bg);
+  border-radius: var(--vb-radius-sm);
+  padding: 3px;
+}
+
+.type-switch button {
+  flex: 1;
+  border: 0;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vb-text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  transition: all var(--vb-transition);
+}
+
+.type-switch button.active {
+  background: var(--vb-accent);
+  color: #fff;
+}
+
+.process-form {
+  margin-top: 18px;
+}
+
+.pp-progress {
   margin-top: 16px;
 }
 
-.progress-text {
+.pp-text {
   text-align: center;
   font-size: 13px;
-  color: #909399;
+  color: var(--vb-text-secondary);
   margin-top: 8px;
 }
 
-.error-text {
+.pp-error {
   text-align: center;
   font-size: 13px;
-  color: #f56c6c;
+  color: #dc2626;
   margin-top: 4px;
 }
 </style>

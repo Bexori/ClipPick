@@ -1,0 +1,371 @@
+/* ============ VideoBox Light Theme ============ */
+
+:root {
+  /* Background */
+  --vb-bg: #f5f6f8;
+  --vb-bg-surface: #ffffff;
+  --vb-bg-elevated: #f9fafb;
+  --vb-bg-hover: #f0f1f3;
+
+  /* Border */
+  --vb-border: #e5e7eb;
+  --vb-border-light: #f0f1f3;
+
+  /* Text */
+  --vb-text: #1a1a2e;
+  --vb-text-secondary: #6b7280;
+  --vb-text-tertiary: #9ca3af;
+
+  /* Brand */
+  --vb-accent: #6366f1;
+  --vb-accent-light: #818cf8;
+  --vb-accent-bg: rgba(99, 102, 241, 0.08);
+
+  /* Semantic */
+  --vb-success: #10b981;
+  --vb-success-bg: rgba(16, 185, 129, 0.08);
+  --vb-warning: #f59e0b;
+  --vb-warning-bg: rgba(245, 158, 11, 0.08);
+  --vb-danger: #ef4444;
+  --vb-danger-bg: rgba(239, 68, 68, 0.08);
+  --vb-info: #3b82f6;
+  --vb-info-bg: rgba(59, 130, 246, 0.08);
+
+  /* Radius */
+  --vb-radius: 10px;
+  --vb-radius-sm: 6px;
+  --vb-radius-xs: 4px;
+
+  /* Shadow */
+  --vb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --vb-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --vb-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  /* Transition */
+  --vb-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============ Element Plus Light Overrides ============ */
+
+:root {
+  --el-bg-color: var(--vb-bg-surface);
+  --el-bg-color-page: var(--vb-bg);
+  --el-bg-color-overlay: var(--vb-bg-surface);
+
+  --el-text-color-primary: var(--vb-text);
+  --el-text-color-regular: #374151;
+  --el-text-color-secondary: var(--vb-text-secondary);
+  --el-text-color-placeholder: var(--vb-text-tertiary);
+  --el-text-color-disabled: #d1d5db;
+
+  --el-border-color: var(--vb-border);
+  --el-border-color-light: #e5e7eb;
+  --el-border-color-lighter: #f0f1f3;
+  --el-border-color-extra-light: #f5f5f5;
+  --el-border-color-dark: #d1d5db;
+
+  --el-fill-color: var(--vb-bg-surface);
+  --el-fill-color-light: var(--vb-bg-elevated);
+  --el-fill-color-lighter: var(--vb-bg-hover);
+  --el-fill-color-blank: #fff;
+
+  --el-color-primary: var(--vb-accent);
+  --el-color-primary-light-3: #818cf8;
+  --el-color-primary-light-5: #a5b4fc;
+  --el-color-primary-light-7: #c7d2fe;
+  --el-color-primary-light-8: #ddd6fe;
+  --el-color-primary-light-9: #ede9fe;
+  --el-color-primary-dark-2: #4f46e5;
+
+  --el-color-success: var(--vb-success);
+  --el-color-success-light-3: #34d399;
+  --el-color-success-light-5: #6ee7b7;
+  --el-color-success-light-7: #a7f3d0;
+  --el-color-success-light-8: #d1fae5;
+  --el-color-success-light-9: #ecfdf5;
+  --el-color-success-dark-2: #059669;
+
+  --el-color-warning: var(--vb-warning);
+  --el-color-warning-light-3: #fbbf24;
+  --el-color-warning-light-5: #fcd34d;
+  --el-color-warning-light-7: #fde68a;
+  --el-color-warning-light-8: #fef3c7;
+  --el-color-warning-light-9: #fffbeb;
+  --el-color-warning-dark-2: #d97706;
+
+  --el-color-danger: var(--vb-danger);
+  --el-color-danger-light-3: #f87171;
+  --el-color-danger-light-5: #fca5a5;
+  --el-color-danger-light-7: #fecaca;
+  --el-color-danger-light-8: #fee2e2;
+  --el-color-danger-light-9: #fef2f2;
+  --el-color-danger-dark-2: #dc2626;
+
+  --el-color-info: var(--vb-info);
+  --el-color-info-light-3: #60a5fa;
+  --el-color-info-light-5: #93c5fd;
+  --el-color-info-light-7: #bfdbfe;
+  --el-color-info-light-8: #dbeafe;
+  --el-color-info-light-9: #eff6ff;
+  --el-color-info-dark-2: #2563eb;
+
+  --el-border-radius-base: var(--vb-radius);
+  --el-border-radius-small: var(--vb-radius-sm);
+
+  --el-box-shadow-light: var(--vb-shadow-sm);
+  --el-box-shadow: var(--vb-shadow);
+  --el-box-shadow-dark: var(--vb-shadow-lg);
+
+  --el-input-bg-color: #fff;
+  --el-input-border-color: var(--vb-border);
+
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--vb-bg-elevated);
+  --el-table-row-hover-bg-color: var(--vb-bg-hover);
+  --el-table-border-color: var(--vb-border-light);
+
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: var(--vb-bg-hover);
+  --el-menu-text-color: var(--vb-text-secondary);
+  --el-menu-active-color: var(--vb-accent);
+
+  --el-dialog-bg-color: #fff;
+}
+
+/* ============ Global Reset ============ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  background: var(--vb-bg);
+  color: var(--vb-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Selection */
+::selection {
+  background: var(--vb-accent-bg);
+  color: var(--vb-accent);
+}
+
+a {
+  color: var(--vb-accent);
+  text-decoration: none;
+}
+
+/* ============ Element Plus Fine-tuning ============ */
+
+.el-card {
+  background: var(--vb-bg-surface) !important;
+  border: 1px solid var(--vb-border) !important;
+  border-radius: var(--vb-radius) !important;
+  box-shadow: var(--vb-shadow-sm) !important;
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--vb-border-light) !important;
+  padding: 16px 20px !important;
+}
+
+.el-card__body {
+  padding: 20px !important;
+}
+
+.el-button {
+  font-weight: 500 !important;
+  border-radius: var(--vb-radius-sm) !important;
+  transition: all var(--vb-transition) !important;
+}
+
+.el-button--primary {
+  background: var(--vb-accent) !important;
+  border-color: var(--vb-accent) !important;
+}
+.el-button--primary:hover {
+  background: var(--vb-accent-light) !important;
+  border-color: var(--vb-accent-light) !important;
+}
+
+.el-button--default {
+  background: #fff !important;
+  border-color: var(--vb-border) !important;
+  color: var(--vb-text) !important;
+}
+.el-button--default:hover {
+  background: var(--vb-bg-hover) !important;
+  border-color: #d1d5db !important;
+}
+
+/* Input */
+.el-input__wrapper {
+  background: #fff !important;
+  border-radius: var(--vb-radius-sm) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--vb-border) !important;
+  transition: border-color var(--vb-transition), box-shadow var(--vb-transition) !important;
+}
+.el-input__wrapper:hover {
+  border-color: #d1d5db !important;
+}
+.el-input__wrapper.is-focus {
+  border-color: var(--vb-accent) !important;
+  box-shadow: 0 0 0 3px var(--vb-accent-bg) !important;
+}
+.el-input__inner {
+  color: var(--vb-text) !important;
+}
+.el-input__inner::placeholder {
+  color: var(--vb-text-tertiary) !important;
+}
+
+/* Select dropdown */
+.el-select-dropdown {
+  background: #fff !important;
+  border: 1px solid var(--vb-border) !important;
+  border-radius: var(--vb-radius-sm) !important;
+  box-shadow: var(--vb-shadow-lg) !important;
+}
+.el-select-dropdown__item {
+  color: var(--vb-text) !important;
+}
+.el-select-dropdown__item:hover {
+  background: var(--vb-bg-hover) !important;
+}
+.el-select-dropdown__item.selected {
+  color: var(--vb-accent) !important;
+  background: var(--vb-accent-bg) !important;
+  font-weight: 600 !important;
+}
+.el-popper__arrow::before {
+  background: #fff !important;
+  border-color: var(--vb-border) !important;
+}
+
+/* Table */
+.el-table {
+  --el-table-bg-color: transparent !important;
+  --el-table-tr-bg-color: transparent !important;
+  --el-table-header-bg-color: var(--vb-bg-elevated) !important;
+  --el-table-row-hover-bg-color: var(--vb-bg-hover) !important;
+  --el-table-border-color: var(--vb-border-light) !important;
+  color: var(--vb-text) !important;
+}
+
+.el-table th.el-table__cell {
+  background: var(--vb-bg-elevated) !important;
+  color: var(--vb-text-secondary) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.3px !important;
+  border-color: var(--vb-border-light) !important;
+}
+
+.el-table td.el-table__cell {
+  border-color: var(--vb-border-light) !important;
+}
+
+.el-table__body tr:hover > td {
+  background: var(--vb-bg-hover) !important;
+}
+
+/* Tag */
+.el-tag {
+  border-radius: var(--vb-radius-xs) !important;
+  font-weight: 500 !important;
+}
+
+/* Progress */
+.el-progress-bar__outer {
+  background: var(--vb-bg-hover) !important;
+  border-radius: 4px !important;
+}
+.el-progress-bar__inner {
+  border-radius: 4px !important;
+}
+
+/* Dialog */
+.el-dialog {
+  background: #fff !important;
+  border: 1px solid var(--vb-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--vb-shadow-lg) !important;
+}
+.el-dialog__header {
+  border-bottom: 1px solid var(--vb-border-light) !important;
+  padding: 20px 24px !important;
+}
+.el-dialog__title {
+  color: var(--vb-text) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+.el-dialog__body {
+  padding: 24px !important;
+  color: var(--vb-text) !important;
+}
+.el-dialog__footer {
+  border-top: 1px solid var(--vb-border-light) !important;
+  padding: 16px 24px !important;
+}
+
+.el-divider {
+  border-color: var(--vb-border-light) !important;
+}
+
+.el-radio__input.is-checked + .el-radio__label {
+  color: var(--vb-text) !important;
+}
+.el-radio__label {
+  color: var(--vb-text-secondary) !important;
+}
+
+.el-message-box {
+  background: #fff !important;
+  border: 1px solid var(--vb-border) !important;
+  border-radius: var(--vb-radius) !important;
+}
+.el-message-box__title {
+  color: var(--vb-text) !important;
+}
+.el-message-box__message {
+  color: var(--vb-text-secondary) !important;
+}
+
+.el-alert {
+  border-radius: var(--vb-radius-sm) !important;
+}
+
+.el-loading-mask {
+  background: rgba(255, 255, 255, 0.7) !important;
+}

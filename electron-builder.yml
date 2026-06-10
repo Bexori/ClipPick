@@ -1,5 +1,5 @@
 appId: com.videobox.app
-productName: VideoBox
+productName: 影盒
 directories:
   output: dist-electron
 files:
@@ -20,6 +20,6 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
-  shortcutName: VideoBox
+  shortcutName: 影盒
 asarUnpack:
   - "resources/**"

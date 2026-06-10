@@ -1,14 +1,17 @@
 <template>
   <div class="history-page">
-    <div class="history-header">
-      <h3>下载历史</h3>
+    <div class="history-top">
+      <div>
+        <h2 class="history-heading">下载历史</h2>
+        <p class="history-sub">{{ historyStore.entries.length }} 条记录</p>
+      </div>
       <el-button
         type="danger"
         plain
         :disabled="historyStore.entries.length === 0"
         @click="handleClear"
       >
-        清空历史
+        清空全部
       </el-button>
     </div>
 
@@ -72,26 +75,37 @@ function showProcessDialog(filepath: string) {
   processDialogVisible.value = true
 }
 
-function handleOpenFolder(filepath: string) {
-  window.api.openFileInFolder(filepath)
+async function handleOpenFolder(filepath: string) {
+  const result = await window.api.openFileInFolder(filepath)
+  if (!result.ok && result.message) {
+    ElMessage.warning(result.message)
+  }
 }
 </script>
 
 <style scoped>
 .history-page {
-  max-width: 1100px;
+  max-width: 1000px;
   margin: 0 auto;
+  padding: 32px 28px;
 }
 
-.history-header {
+.history-top {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
-.history-header h3 {
-  font-size: 18px;
-  font-weight: 600;
+.history-heading {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--vb-text);
+  margin-bottom: 4px;
+}
+
+.history-sub {
+  font-size: 13px;
+  color: var(--vb-text-tertiary);
 }
 </style>

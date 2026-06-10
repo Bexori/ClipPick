@@ -1,49 +1,65 @@
 <template>
-  <div class="download-item">
-    <div class="download-header">
-      <span class="download-title">{{ task.title }}</span>
-      <el-tag :type="statusType" size="small">{{ statusText }}</el-tag>
+  <div class="task-item" :class="`status-${task.status}`">
+    <div class="task-top">
+      <span class="task-title">{{ task.title }}</span>
+      <span class="task-badge" :class="badgeClass">{{ statusText }}</span>
     </div>
 
     <el-progress
       :percentage="task.progress"
-      :status="task.status === 'error' ? 'exception' : task.status === 'completed' ? 'success' : undefined"
       :indeterminate="task.status === 'post-processing'"
-      style="margin: 8px 0"
+      :stroke-width="6"
+      :show-text="false"
+      :color="progressColor"
     />
 
-    <div class="download-stats">
-      <span v-if="task.speed">{{ task.speed }}</span>
-      <span v-if="task.eta">剩余 {{ task.eta }}</span>
-      <span v-if="task.totalBytes > 0">
-        {{ formatBytes(task.downloadedBytes) }} / {{ formatBytes(task.totalBytes) }}
-      </span>
-      <span class="format-label">{{ task.formatLabel }}</span>
+    <div class="task-stats">
+      <div class="stats-left">
+        <span v-if="task.speed">{{ task.speed }}</span>
+        <span v-if="task.eta">剩余 {{ task.eta }}</span>
+        <span v-if="task.totalBytes > 0">
+          {{ formatBytes(task.downloadedBytes) }} / {{ formatBytes(task.totalBytes) }}
+        </span>
+        <span v-if="task.retryCount">已重试 {{ task.retryCount }} 次</span>
+      </div>
+      <span class="task-format">{{ task.formatLabel }}</span>
     </div>
 
-    <div v-if="task.error" class="download-error">
-      {{ task.error }}
+    <div v-if="task.error" class="task-error">
+      <span>{{ task.error }}</span>
+      <el-button v-if="task.errorDetail" link size="small" @click="copyError">复制详情</el-button>
     </div>
 
-    <div class="download-actions" v-if="task.status !== 'completed' && task.status !== 'error'">
+    <div class="task-actions">
       <el-button
-        v-if="task.status === 'downloading'"
-        type="danger"
+        v-if="task.status === 'downloading' || task.status === 'queued'"
         size="small"
-        plain
         @click="$emit('cancel', task.taskId)"
       >
         取消
       </el-button>
-    </div>
-    <div class="download-actions" v-else-if="task.status === 'completed'">
       <el-button
-        type="success"
+        v-if="task.status === 'error'"
+        type="primary"
         size="small"
-        plain
+        @click="$emit('retry', task.taskId)"
+      >
+        重试
+      </el-button>
+      <el-button
+        v-if="task.status === 'completed'"
+        type="primary"
+        size="small"
         @click="$emit('openFolder', task.taskId)"
       >
-        打开文件位置
+        打开文件夹
+      </el-button>
+      <el-button
+        v-if="task.status === 'completed' || task.status === 'error' || task.status === 'cancelled'"
+        size="small"
+        @click="$emit('remove', task.taskId)"
+      >
+        关闭
       </el-button>
     </div>
   </div>
@@ -51,6 +67,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import type { DownloadTask } from '../../../shared/types'
 
 const props = defineProps<{
@@ -59,20 +76,44 @@ const props = defineProps<{
 
 defineEmits<{
   cancel: [taskId: string]
+  retry: [taskId: string]
+  remove: [taskId: string]
   openFolder: [taskId: string]
 }>()
 
-const statusMap: Record<string, { text: string; type: '' | 'success' | 'warning' | 'info' | 'danger' }> = {
-  queued: { text: '排队中', type: 'info' },
-  downloading: { text: '下载中', type: '' },
-  'post-processing': { text: '处理中', type: 'warning' },
-  completed: { text: '已完成', type: 'success' },
-  cancelled: { text: '已取消', type: 'info' },
-  error: { text: '失败', type: 'danger' }
+const statusMap: Record<string, string> = {
+  queued: '排队中',
+  downloading: '下载中',
+  'post-processing': '处理中',
+  completed: '已完成',
+  cancelled: '已取消',
+  error: '失败'
 }
 
-const statusText = computed(() => statusMap[props.task.status]?.text ?? props.task.status)
-const statusType = computed(() => statusMap[props.task.status]?.type ?? 'info')
+const statusText = computed(() => statusMap[props.task.status] ?? props.task.status)
+
+const badgeClass = computed(() => {
+  const map: Record<string, string> = {
+    queued: 'badge-info',
+    downloading: 'badge-info',
+    'post-processing': 'badge-warn',
+    completed: 'badge-ok',
+    cancelled: 'badge-muted',
+    error: 'badge-err'
+  }
+  return map[props.task.status] ?? 'badge-muted'
+})
+
+const progressColor = computed(() => {
+  if (props.task.status === 'error') return '#ef4444'
+  if (props.task.status === 'completed') return '#10b981'
+  return '#6366f1'
+})
+
+async function copyError() {
+  await navigator.clipboard.writeText(props.task.errorDetail || props.task.error || '')
+  ElMessage.success('错误详情已复制')
+}
 
 function formatBytes(bytes: number): string {
   if (!bytes) return '0 B'
@@ -85,50 +126,87 @@ function formatBytes(bytes: number): string {
 </script>
 
 <style scoped>
-.download-item {
-  padding: 12px 0;
-  border-bottom: 1px solid #ebeef5;
+.task-item {
+  padding: 16px;
+  border-radius: var(--vb-radius-sm);
+  background: var(--vb-bg);
+  transition: background var(--vb-transition);
 }
 
-.download-item:last-child {
-  border-bottom: none;
+.task-item + .task-item {
+  margin-top: 8px;
 }
 
-.download-header {
+.task-top {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
 
-.download-title {
-  font-size: 14px;
-  font-weight: 500;
+.task-title {
   flex: 1;
+  margin-right: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--vb-text);
 }
 
-.download-stats {
+.task-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--vb-radius-xs);
+}
+
+.badge-info { background: var(--vb-info-bg); color: #2563eb; }
+.badge-warn { background: var(--vb-warning-bg); color: #d97706; }
+.badge-ok { background: var(--vb-success-bg); color: #059669; }
+.badge-err { background: var(--vb-danger-bg); color: #dc2626; }
+.badge-muted { background: var(--vb-bg-hover); color: var(--vb-text-tertiary); }
+
+.task-stats {
   display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
-}
-
-.format-label {
-  color: #c0c4cc;
-}
-
-.download-error {
-  font-size: 12px;
-  color: #f56c6c;
-  margin-top: 4px;
-}
-
-.download-actions {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: 8px;
+  font-size: 12px;
+  color: var(--vb-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.task-format {
+  flex-shrink: 0;
+  color: var(--vb-text-tertiary);
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+}
+
+.task-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #dc2626;
+}
+
+.task-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
 }
 </style>

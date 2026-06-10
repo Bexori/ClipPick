@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
   StartDownloadRequest, HistoryEntry, ProgressPayload,
-  CompletePayload, ErrorPayload, FfmpegRequest, VideoParseResult
+  CompletePayload, ErrorPayload, FfmpegRequest, VideoParseResult, AppSettings
 } from '../shared/types'
 
 const api = {
@@ -18,8 +18,10 @@ const api = {
   // Dialog
   selectSavePath: (): Promise<string | null> =>
     ipcRenderer.invoke('dialog:select-path'),
-  openFileInFolder: (filepath: string): Promise<void> =>
+  openFileInFolder: (filepath: string): Promise<import('../shared/types').OpenPathResult> =>
     ipcRenderer.invoke('dialog:open-file', { filepath }),
+  resolvePath: (filepath: string): Promise<import('../shared/types').ResolvePathResult> =>
+    ipcRenderer.invoke('path:resolve', { filepath }),
 
   // FFmpeg
   convertVideo: (req: {
@@ -44,6 +46,12 @@ const api = {
     ipcRenderer.invoke('history:delete', { id }),
   clearHistory: (): Promise<void> =>
     ipcRenderer.invoke('history:clear'),
+
+  // Settings
+  getSettings: (): Promise<AppSettings> =>
+    ipcRenderer.invoke('settings:get'),
+  updateSettings: (patch: Partial<AppSettings>): Promise<AppSettings> =>
+    ipcRenderer.invoke('settings:update', patch),
 
   // App
   getAppVersion: (): Promise<string> =>

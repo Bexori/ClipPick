@@ -54,12 +54,35 @@ export class HistoryService {
     this.saveToDisk()
   }
 
-  delete(id: string): void {
+  delete(id: string): { deleted: boolean; filepath?: string } {
+    const entry = this.entries.find(e => e.id === id)
     this.entries = this.entries.filter(e => e.id !== id)
     this.saveToDisk()
+
+    if (entry?.filepath) {
+      try {
+        if (fs.existsSync(entry.filepath)) {
+          fs.unlinkSync(entry.filepath)
+        }
+        // also try removing the parent directory if empty
+        const parent = path.dirname(entry.filepath)
+        if (fs.existsSync(parent) && fs.readdirSync(parent).length === 0) {
+          fs.rmdirSync(parent)
+        }
+      } catch {
+        // file deletion is best-effort
+      }
+    }
+
+    return { deleted: true, filepath: entry?.filepath }
   }
 
   clear(): void {
+    for (const entry of this.entries) {
+      if (entry.filepath) {
+        try { fs.unlinkSync(entry.filepath) } catch { /* ignore */ }
+      }
+    }
     this.entries = []
     this.saveToDisk()
   }
