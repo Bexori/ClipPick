@@ -237,16 +237,11 @@ function openSettings() {
 
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: opacity 150ms ease, transform 150ms ease;
+  transition: opacity 150ms ease;
 }
 
-.page-fade-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
+.page-fade-enter-from,
 .page-fade-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
 }
 </style>
