@@ -13,7 +13,7 @@ import { logger } from './utils/logger'
 
 let mainWindow: BrowserWindow | null = null
 
-app.name = '影拾'
+app.setAppUserModelId('影拾')
 
 app.disableHardwareAcceleration()
 app.commandLine.appendSwitch('disable-gpu')
