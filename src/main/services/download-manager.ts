@@ -1,18 +1,36 @@
-import { ChildProcess } from 'child_process'
+import { ChildProcess, spawnSync } from 'child_process'
 import { randomUUID } from 'crypto'
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow, Notification } from 'electron'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import { getBinaryPath, getFfmpegPath } from '../utils/paths'
 import { spawnSafe } from '../utils/spawn-safe'
-import type { StartDownloadRequest, ProgressPayload, CompletePayload, ErrorPayload } from '../../shared/types'
+import { logger } from '../utils/logger'
+import type { StartDownloadRequest, ProgressPayload, CompletePayload, ErrorPayload, DownloadTask, DownloadStatus } from '../../shared/types'
 import { buildDownloadArgs } from './yt-dlp-args'
 import { SettingsService } from './settings.service'
+
+function killProcessTree(proc: ChildProcess): void {
+  if (!proc.pid) return
+  if (os.platform() === 'win32') {
+    spawnSync('taskkill', ['/F', '/T', '/PID', String(proc.pid)], { stdio: 'ignore', windowsHide: true })
+  } else {
+    proc.kill('SIGTERM')
+  }
+}
+
+interface ParsedDownloadProgress {
+  percentage: number
+  totalBytes: number
+  speed: string
+  eta: string
+}
 
 interface ManagedDownload {
   taskId: string
   process: ChildProcess | null
-  status: string
+  status: DownloadStatus
   progress: number
   speed: string
   eta: string
@@ -20,11 +38,21 @@ interface ManagedDownload {
   totalBytes: number
   outputPath: string
   destLine: string
+  req: StartDownloadRequest
 }
 
 interface QueuedDownload {
   taskId: string
   req: StartDownloadRequest
+}
+
+interface PersistedEntry {
+  taskId: string
+  req: StartDownloadRequest
+  progress: number
+  downloadedBytes: number
+  totalBytes: number
+  status: DownloadStatus
 }
 
 export class DownloadManager {
@@ -66,17 +94,20 @@ export class DownloadManager {
       downloadedBytes: 0,
       totalBytes: 0,
       outputPath: '',
-      destLine: ''
+      destLine: '',
+      req
     }
 
     this.downloads.set(taskId, managed)
 
     if (this.getActiveCount() >= this.maxConcurrent) {
       this.queue.push({ taskId, req })
+      this.persistQueue()
       return taskId
     }
 
     this.startDownloadInternal(taskId, req, win)
+    this.persistQueue()
     return taskId
   }
 
@@ -88,66 +119,146 @@ export class DownloadManager {
       dl.status = 'cancelled'
       this.queue = this.queue.filter(item => item.taskId !== taskId)
       this.downloads.delete(taskId)
+      this.persistQueue()
       return true
     }
 
     dl.status = 'cancelled'
-    dl.process?.kill('SIGTERM')
+    if (dl.process) killProcessTree(dl.process)
+    this.persistQueue()
     return true
+  }
+
+  recoverUnfinished(): DownloadTask[] {
+    const persisted = this.loadPersistedQueue()
+    const recovered: DownloadTask[] = []
+
+    for (const entry of persisted) {
+      if (entry.status === 'downloading' || entry.status === 'queued') {
+        const task: DownloadTask = {
+          taskId: entry.taskId,
+          videoId: '',
+          title: entry.req.filename,
+          thumbnail: '',
+          url: entry.req.url,
+          formatId: entry.req.formatId,
+          formatLabel: '',
+          outputDir: entry.req.outputDir,
+          filename: entry.req.filename,
+          status: 'error',
+          progress: entry.progress,
+          speed: '',
+          eta: '',
+          downloadedBytes: entry.downloadedBytes,
+          totalBytes: entry.totalBytes,
+          error: '下载已中断，请重试',
+          retryCount: 0,
+          maxRetries: this.settings.get().autoRetryCount,
+          createdAt: new Date().toISOString()
+        }
+        recovered.push(task)
+      }
+    }
+
+    logger.info(`Recovered ${recovered.length} unfinished download(s) from previous session`)
+    return recovered
+  }
+
+  private handleProcessClose(
+    code: number | null,
+    managed: ManagedDownload,
+    win: BrowserWindow,
+    output: { stderr: string }
+  ): void {
+    if (code === 0 || managed.progress >= 100) {
+      managed.status = 'completed'
+      managed.progress = 100
+      const finalPath = this.resolveDownloadedPath(
+        managed.req.outputDir,
+        this.buildOutputBasename(managed.req),
+        managed.destLine,
+        managed.outputPath
+      )
+      logger.info(`Download completed: ${managed.taskId} -> ${finalPath}`)
+      win.webContents.send('download:complete', {
+        taskId: managed.taskId,
+        filepath: finalPath,
+        filesize: managed.totalBytes
+      } as CompletePayload)
+
+      if (this.settings.get().downloadNotifications && Notification.isSupported()) {
+        const n = new Notification({
+          title: '下载完成',
+          body: managed.req.filename || '视频下载完成',
+          silent: false
+        })
+        n.on('click', () => {
+          if (!win.isDestroyed()) {
+            win.show()
+            win.focus()
+          }
+        })
+        n.show()
+      }
+    } else if (managed.status !== 'cancelled') {
+      managed.status = 'error'
+      const detail = output.stderr.trim()
+      logger.error(`Download failed: ${managed.taskId} (code=${code}) ${detail}`)
+      win.webContents.send('download:error', {
+        taskId: managed.taskId,
+        error: this.formatDownloadError(detail, code),
+        detail
+      } as ErrorPayload)
+    }
+
+    setTimeout(() => {
+      this.downloads.delete(managed.taskId)
+      this.persistQueue()
+      this.processQueue(win)
+    }, 1000)
   }
 
   private startDownloadInternal(taskId: string, req: StartDownloadRequest, win: BrowserWindow): void {
     const managed = this.downloads.get(taskId)
     if (!managed) return
 
-    const filename = this.sanitizeFilename(req.filename)
+    const filename = this.buildOutputBasename(req)
     const outputTemplate = `${req.outputDir}\\${filename}.%(ext)s`
-    const args = buildDownloadArgs(req.url, req.formatId, outputTemplate, this.ffmpegPath, this.settings.get())
+    const args = buildDownloadArgs(req.url, req.formatId, outputTemplate, this.ffmpegPath, this.settings.get(), {
+      writeSubs: req.writeSubs,
+      writeAutoSubs: req.writeAutoSubs,
+      subLangs: req.subLangs,
+      embedSubs: req.embedSubs
+    })
     const proc = spawnSafe(this.ytDlpPath, args)
     const output = { stderr: '' }
 
     Object.assign(managed, {
       process: proc,
       status: 'downloading',
-      outputPath: outputTemplate
+      outputPath: outputTemplate,
+      req
     })
+
+    logger.info(`Download started: ${taskId} "${filename}" (${req.formatId})`)
 
     this.parseOutput(proc, managed, win, output)
 
     proc.on('close', (code) => {
-      if (code === 0 || managed.progress >= 100) {
-        managed.status = 'completed'
-        managed.progress = 100
-        const finalPath = this.resolveDownloadedPath(req.outputDir, filename, managed.destLine, managed.outputPath)
-        win.webContents.send('download:complete', {
-          taskId,
-          filepath: finalPath,
-          filesize: managed.totalBytes
-        } as CompletePayload)
-      } else if (managed.status !== 'cancelled') {
-        managed.status = 'error'
-        const detail = output.stderr.trim()
-        win.webContents.send('download:error', {
-          taskId,
-          error: this.formatDownloadError(detail, code),
-          detail
-        } as ErrorPayload)
-      }
-
-      setTimeout(() => {
-        this.downloads.delete(taskId)
-        this.processQueue(win)
-      }, 1000)
+      this.handleProcessClose(code, managed, win, output)
     })
 
     proc.on('error', (err) => {
+      if (managed.status === 'cancelled') return
       managed.status = 'error'
+      logger.error(`Download process error: ${taskId}`, err)
       win.webContents.send('download:error', {
         taskId,
         error: `启动下载失败: ${err.message}`,
         detail: err.stack || err.message
       } as ErrorPayload)
       this.downloads.delete(taskId)
+      this.persistQueue()
       this.processQueue(win)
     })
   }
@@ -157,6 +268,7 @@ export class DownloadManager {
       const next = this.queue.shift()
       if (next) this.startDownloadInternal(next.taskId, next.req, win)
     }
+    this.persistQueue()
   }
 
   private getActiveCount(): number {
@@ -188,15 +300,13 @@ export class DownloadManager {
   }
 
   private handleOutputLine(line: string, managed: ManagedDownload, win: BrowserWindow): void {
-    const match = line.match(
-      /\[download\]\s+([\d.]+)%\s+of\s+~?([\d.]+[KMG]?i?B)\s+at\s+(\S+)\s+ETA\s+([\d:]+)/
-    )
+    const progress = this.parseDownloadProgress(line)
 
-    if (match) {
-      managed.progress = parseFloat(match[1]) || 0
-      managed.totalBytes = this.parseSize(match[2])
-      managed.speed = match[3]
-      managed.eta = match[4]
+    if (progress) {
+      managed.progress = progress.percentage
+      managed.totalBytes = progress.totalBytes
+      managed.speed = progress.speed
+      managed.eta = progress.eta
       managed.downloadedBytes = Math.round(managed.totalBytes * managed.progress / 100)
       managed.status = 'downloading'
 
@@ -229,6 +339,71 @@ export class DownloadManager {
       } as ProgressPayload)
     }
   }
+
+  // ========== Queue Persistence ==========
+
+  private getPersistPath(): string {
+    try {
+      return path.join(app.getPath('userData'), 'download-queue.json')
+    } catch (err) {
+      const fallback = path.join(process.cwd(), 'download-queue.json')
+      logger.warn(`getPersistPath: falling back to cwd. userData error: ${String(err)}. Using: ${fallback}`)
+      return fallback
+    }
+  }
+
+  private persistQueue(): void {
+    try {
+      const entries: PersistedEntry[] = []
+      for (const dl of this.downloads.values()) {
+        if (dl.status === 'completed' || dl.status === 'cancelled') continue
+        entries.push({
+          taskId: dl.taskId,
+          req: dl.req,
+          progress: dl.progress,
+          downloadedBytes: dl.downloadedBytes,
+          totalBytes: dl.totalBytes,
+          status: dl.status
+        })
+      }
+      // Also persist queued items not yet in downloads map
+      for (const q of this.queue) {
+        if (!entries.some(e => e.taskId === q.taskId)) {
+          entries.push({
+            taskId: q.taskId,
+            req: q.req,
+            progress: 0,
+            downloadedBytes: 0,
+            totalBytes: 0,
+            status: 'queued'
+          })
+        }
+      }
+      fs.writeFileSync(this.getPersistPath(), JSON.stringify(entries, null, 2), 'utf-8')
+    } catch (err) {
+      logger.warn('Failed to persist download queue', err)
+    }
+  }
+
+  private loadPersistedQueue(): PersistedEntry[] {
+    try {
+      const raw = fs.readFileSync(this.getPersistPath(), 'utf-8')
+      const data: unknown = JSON.parse(raw)
+      if (!Array.isArray(data)) return []
+      return data.filter(isPersistedEntry)
+    } catch {
+      return []
+    }
+  }
+
+  clearPersistedQueue(): void {
+    try {
+      const p = this.getPersistPath()
+      if (fs.existsSync(p)) fs.unlinkSync(p)
+    } catch { /* ignore */ }
+  }
+
+  // ========== Helpers ==========
 
   private formatDownloadError(stderr: string, code: number | null): string {
     if (stderr.includes('Could not copy Chrome cookie database')) {
@@ -263,13 +438,23 @@ export class DownloadManager {
   private sanitizeFilename(name: string): string {
     return name
       .normalize('NFKC')
-      .replace(/\uFFFD/g, '')
+      .replace(/�/g, '')
       .replace(/[\x00-\x1F\x7F]/g, '')
       .replace(/[<>:"/\\|?*]/g, '_')
       .replace(/^\.+/, '')
       .replace(/_+/g, '_')
       .replace(/[\s.]+$/, '')
       .substring(0, 200) || 'video'
+  }
+
+  private buildOutputBasename(req: StartDownloadRequest): string {
+    const title = this.sanitizeFilename(req.filename)
+    const formatSuffix = this.sanitizeFilename(req.formatLabel || req.formatId)
+      .replace(/\+/g, '_')
+      .replace(/_best(?:audio|video)?/g, '')
+      .substring(0, 60)
+
+    return formatSuffix ? `${title} [${formatSuffix}]` : title
   }
 
   private resolveDownloadedPath(outputDir: string, filename: string, destLine: string, outputTemplate: string): string {
@@ -299,9 +484,51 @@ export class DownloadManager {
   }
 
   private parseSize(text: string): number {
-    const units: Record<string, number> = { B: 1, KiB: 1024, MiB: 1024 ** 2, GiB: 1024 ** 3 }
-    const match = text.match(/^([\d.]+)\s*(B|KiB|MiB|GiB)$/)
+    const units: Record<string, number> = {
+      B: 1,
+      KB: 1000,
+      MB: 1000 ** 2,
+      GB: 1000 ** 3,
+      KiB: 1024,
+      MiB: 1024 ** 2,
+      GiB: 1024 ** 3
+    }
+    const match = text.match(/^([\d.]+)\s*(B|KB|MB|GB|KiB|MiB|GiB)$/)
     if (!match) return 0
     return parseFloat(match[1]) * (units[match[2]] ?? 1)
   }
+
+  private parseDownloadProgress(line: string): ParsedDownloadProgress | null {
+    if (!line.includes('[download]') || !line.includes('%')) return null
+
+    const percentage = Number.parseFloat(line.match(/([\d.]+)%/)?.[1] ?? '')
+    if (!Number.isFinite(percentage)) return null
+
+    const totalText = line.match(/\bof\s+~?\s*([\d.]+\s*(?:B|KB|MB|GB|KiB|MiB|GiB))/)?.[1] ?? ''
+    const speed = line.match(/\bat\s+(\S+)/)?.[1] ?? ''
+    const eta = line.match(/\bETA\s+([\d:]+)/)?.[1] ?? ''
+
+    return {
+      percentage,
+      totalBytes: totalText ? this.parseSize(totalText.replace(/\s+/g, '')) : 0,
+      speed,
+      eta
+    }
+  }
+}
+
+function isPersistedEntry(value: unknown): value is PersistedEntry {
+  if (!value || typeof value !== 'object') return false
+  const entry = value as Partial<PersistedEntry>
+  const req = entry.req as Partial<StartDownloadRequest> | undefined
+  return typeof entry.taskId === 'string' &&
+    typeof entry.progress === 'number' &&
+    typeof entry.downloadedBytes === 'number' &&
+    typeof entry.totalBytes === 'number' &&
+    typeof entry.status === 'string' &&
+    Boolean(req) &&
+    typeof req.url === 'string' &&
+    typeof req.formatId === 'string' &&
+    typeof req.outputDir === 'string' &&
+    typeof req.filename === 'string'
 }
