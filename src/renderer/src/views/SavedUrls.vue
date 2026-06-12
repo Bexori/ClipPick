@@ -158,10 +158,12 @@ function formatDate(iso: string): string {
 }
 
 .saved-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   background: var(--vb-bg-surface);
   border: 1px solid var(--vb-border);
   border-radius: var(--vb-radius);
-  overflow: hidden;
 }
 
 .thumb-img {
