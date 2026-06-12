@@ -187,6 +187,38 @@
           <label class="field-label">选择格式</label>
           <FormatSelector v-model="entrySelectedFormat" :formats="entryVideoInfo.formats" />
 
+          <div v-if="entryVideoInfo.subtitles.length > 0" class="subs-section">
+            <el-checkbox v-model="entryEnableSubs" class="subs-toggle">
+              下载字幕
+            </el-checkbox>
+            <div v-if="entryEnableSubs" class="subs-options">
+              <div class="subs-row">
+                <el-checkbox v-model="entryWriteSubs">手动字幕</el-checkbox>
+                <el-checkbox v-model="entryWriteAutoSubs">自动字幕</el-checkbox>
+                <el-checkbox v-model="entryEmbedSubs">嵌入视频</el-checkbox>
+              </div>
+              <div class="subs-lang-row">
+                <span class="subs-lang-label">语言</span>
+                <el-select
+                  v-model="entrySelectedSubLangs"
+                  multiple
+                  collapse-tags
+                  collapse-tags-tooltip
+                  placeholder="全部语言"
+                  size="small"
+                  class="subs-lang-select"
+                >
+                  <el-option
+                    v-for="sub in entryVideoInfo.subtitles"
+                    :key="sub.lang"
+                    :label="sub.label"
+                    :value="sub.lang"
+                  />
+                </el-select>
+              </div>
+            </div>
+          </div>
+
           <el-button
             type="primary"
             size="large"
@@ -306,6 +338,11 @@ const entryParsing = ref(false)
 const entryError = ref('')
 const entryVideoInfo = ref<VideoParseResult | null>(null)
 const entrySelectedFormat = ref('')
+const entryEnableSubs = ref(false)
+const entryWriteSubs = ref(true)
+const entryWriteAutoSubs = ref(true)
+const entrySelectedSubLangs = ref<string[]>([])
+const entryEmbedSubs = ref(false)
 
 const videoInfo = computed(() => downloadStore.videoInfo)
 const visibleTasks = computed(() => downloadStore.tasks)
@@ -525,12 +562,20 @@ async function downloadSelectedEntry() {
     ? `${format.height > 0 ? `${format.height}p` : 'audio'} ${format.ext.toUpperCase()}`
     : entrySelectedFormat.value
 
+  const subLangsValue = entryEnableSubs.value && entrySelectedSubLangs.value.length > 0
+    ? entrySelectedSubLangs.value.join(',')
+    : undefined
+
   const taskId = await window.api.startDownload({
     url: sourceUrl,
     formatId: entrySelectedFormat.value,
     outputDir: settingsStore.defaultSavePath,
     filename: entryVideoInfo.value.title,
-    formatLabel
+    formatLabel,
+    writeSubs: entryEnableSubs.value && entryWriteSubs.value,
+    writeAutoSubs: entryEnableSubs.value && entryWriteAutoSubs.value,
+    subLangs: subLangsValue,
+    embedSubs: entryEnableSubs.value && entryEmbedSubs.value
   })
 
   downloadStore.addTask({
