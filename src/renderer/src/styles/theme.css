@@ -302,6 +302,10 @@ a {
   background: var(--vb-bg-hover) !important;
 }
 
+.el-table--striped .el-table__body tr.el-table__row--striped td {
+  background: #faf7f5 !important;
+}
+
 /* Tag */
 .el-tag {
   border-radius: var(--vb-radius-xs) !important;

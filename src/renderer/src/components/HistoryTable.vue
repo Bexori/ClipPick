@@ -3,6 +3,7 @@
     <el-table
       :data="entries"
       v-loading="loading"
+      stripe
       style="width: 100%"
       empty-text="暂无下载记录"
       :default-sort="{ prop: 'downloadedAt', order: 'descending' }"

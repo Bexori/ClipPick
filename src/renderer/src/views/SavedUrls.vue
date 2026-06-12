@@ -1,9 +1,11 @@
 <template>
   <div class="saved-urls-page">
     <div class="saved-top">
-      <div>
-        <h2 class="saved-heading">收藏</h2>
-        <p class="saved-sub">{{ savedUrlsStore.entries.length }} 条记录</p>
+      <div class="saved-top-left">
+        <h2 class="saved-heading"><span class="heading-accent" />收藏</h2>
+        <p class="saved-sub">
+          <span class="count-badge">{{ savedUrlsStore.entries.length }}</span> 条记录
+        </p>
       </div>
     </div>
 
@@ -11,6 +13,7 @@
       <el-table
         :data="pagedEntries"
         v-loading="savedUrlsStore.loading"
+        stripe
         empty-text="暂无已保存的链接"
         row-key="id"
         size="default"
@@ -142,19 +145,55 @@ function formatDate(iso: string): string {
   justify-content: space-between;
   margin-bottom: 20px;
   flex-shrink: 0;
+  background: var(--vb-bg-surface);
+  border: 1px solid var(--vb-border);
+  border-radius: var(--vb-radius);
+  padding: 18px 22px;
+}
+
+.saved-top-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .saved-heading {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--vb-text);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.heading-accent {
+  display: inline-block;
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--vb-accent);
+  flex-shrink: 0;
 }
 
 .saved-sub {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--vb-text-tertiary);
-  margin: 4px 0 0;
+  margin: 0;
+  padding-left: 14px;
+}
+
+.count-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vb-accent);
+  background: var(--vb-accent-bg);
+  padding: 1px 8px;
+  border-radius: 10px;
+  min-width: 24px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .saved-table-wrap {
