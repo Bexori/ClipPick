@@ -1,18 +1,18 @@
-/* ============ VideoBox Light Theme ============ */
+/* ============ ClipPick Light Theme ============ */
 
 :root {
   /* Background */
-  --vb-bg: #f5f6f8;
+  --vb-bg: #f4f5f7;
   --vb-bg-surface: #ffffff;
   --vb-bg-elevated: #f9fafb;
   --vb-bg-hover: #f0f1f3;
 
   /* Border */
-  --vb-border: #e5e7eb;
+  --vb-border: #e8eaed;
   --vb-border-light: #f0f1f3;
 
   /* Text */
-  --vb-text: #1a1a2e;
+  --vb-text: #18181b;
   --vb-text-secondary: #6b7280;
   --vb-text-tertiary: #9ca3af;
 
@@ -153,21 +153,24 @@ body {
   color: var(--vb-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
+  letter-spacing: 0;
+  font-feature-settings: 'tnum';
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #d1d5db;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
@@ -223,7 +226,7 @@ a {
   color: var(--vb-text) !important;
 }
 .el-button--default:hover {
-  background: var(--vb-bg-hover) !important;
+  background: var(--vb-bg) !important;
   border-color: #d1d5db !important;
 }
 
@@ -359,6 +362,129 @@ a {
   color: var(--vb-text) !important;
 }
 .el-message-box__message {
+  color: var(--vb-text-secondary) !important;
+}
+
+.history-delete-message-box {
+  width: min(420px, calc(100vw - 40px)) !important;
+  padding: 0 !important;
+  border: 1px solid rgba(239, 68, 68, 0.14) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 18px 44px rgba(24, 24, 27, 0.14) !important;
+  overflow: hidden;
+}
+
+.history-delete-message-box .el-message-box__header {
+  padding: 22px 24px 6px !important;
+}
+
+.history-delete-message-box .el-message-box__title {
+  color: var(--vb-text) !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+}
+
+.history-delete-message-box .el-message-box__headerbtn {
+  top: 18px !important;
+  right: 18px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  transition: background var(--vb-transition) !important;
+}
+
+.history-delete-message-box .el-message-box__headerbtn:hover {
+  background: var(--vb-bg-hover) !important;
+}
+
+.history-delete-message-box .el-message-box__content {
+  padding: 12px 24px 18px !important;
+}
+
+.history-delete-message-box .el-message-box__message {
+  width: 100%;
+}
+
+.history-delete-message-box .el-message-box__btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 24px 24px !important;
+}
+
+.history-delete-message-box .el-message-box__btns .el-button {
+  min-width: 86px;
+  height: 36px;
+  margin-left: 0 !important;
+}
+
+.history-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.history-delete-confirm__description {
+  margin: 0;
+  color: var(--vb-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.history-delete-confirm__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.07), rgba(239, 68, 68, 0.04));
+  border: 1px solid rgba(239, 68, 68, 0.12);
+  border-radius: 10px;
+  color: var(--vb-danger);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  user-select: none;
+  transition: border-color var(--vb-transition), background var(--vb-transition);
+}
+
+.history-delete-confirm__option:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.history-delete-confirm__checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--vb-danger);
+  cursor: pointer;
+}
+
+.history-delete-confirm__checkbox:focus-visible {
+  outline: 3px solid rgba(239, 68, 68, 0.16);
+  outline-offset: 2px;
+}
+
+.history-delete-confirm__option:has(.history-delete-confirm__checkbox:checked) {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.history-delete-confirm__confirm {
+  background: var(--vb-danger) !important;
+  border-color: var(--vb-danger) !important;
+  color: #fff !important;
+}
+
+.history-delete-confirm__confirm:hover,
+.history-delete-confirm__confirm:focus {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.history-delete-confirm__cancel {
   color: var(--vb-text-secondary) !important;
 }
 
