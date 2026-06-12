@@ -111,6 +111,7 @@ function formatDate(iso: string): string {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
   background: var(--vb-bg-surface);
   border: 1px solid var(--vb-border);
   border-radius: var(--vb-radius);
