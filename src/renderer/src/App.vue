@@ -1,21 +1,18 @@
 <template>
   <div class="app-shell" :class="{ 'sidebar-collapsed': collapsed }">
     <aside class="sidebar">
-      <div class="sidebar-brand">
-        <div class="brand-icon">
-          <el-icon :size="22"><VideoCameraFilled /></el-icon>
-        </div>
-        <span class="brand-text">影盒</span>
-      </div>
-
       <nav class="sidebar-nav">
-        <router-link to="/" class="nav-item" :class="{ active: activeMenu === '/' }" title="下载">
+        <router-link to="/" class="nav-item" :class="{ active: activeMenu === '/' }" title="首页">
           <el-icon :size="18"><Download /></el-icon>
-          <span>下载</span>
+          <span>首页</span>
         </router-link>
-        <router-link to="/history" class="nav-item" :class="{ active: activeMenu === '/history' }" title="历史记录">
+        <router-link to="/history" class="nav-item" :class="{ active: activeMenu === '/history' }" title="历史">
           <el-icon :size="18"><Clock /></el-icon>
-          <span>历史记录</span>
+          <span>历史</span>
+        </router-link>
+        <router-link to="/saved-urls" class="nav-item" :class="{ active: activeMenu === '/saved-urls' }" title="收藏">
+          <el-icon :size="18"><Star /></el-icon>
+          <span>收藏</span>
         </router-link>
       </nav>
 
@@ -52,18 +49,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeftBold, ArrowRightBold, Clock, Download, Setting, VideoCameraFilled } from '@element-plus/icons-vue'
+import { ArrowLeftBold, ArrowRightBold, Clock, Download, Setting, Star } from '@element-plus/icons-vue'
 import SettingsDialog from './components/SettingsDialog.vue'
 
 const route = useRoute()
-const collapsed = ref(localStorage.getItem('videobox-sidebar-collapsed') === '1')
+const collapsed = ref(localStorage.getItem('clippick-sidebar-collapsed') === '1')
 const settingsRef = ref<InstanceType<typeof SettingsDialog> | null>(null)
 
 const activeMenu = computed(() => route.path)
 
 function toggleCollapsed() {
   collapsed.value = !collapsed.value
-  localStorage.setItem('videobox-sidebar-collapsed', collapsed.value ? '1' : '0')
+  localStorage.setItem('clippick-sidebar-collapsed', collapsed.value ? '1' : '0')
 }
 
 function openSettings() {
@@ -91,40 +88,12 @@ function openSettings() {
   transition: width var(--vb-transition);
 }
 
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 20px 12px 24px 18px;
-  -webkit-app-region: no-drag;
-}
-
-.brand-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--vb-accent);
-  border-radius: var(--vb-radius-sm);
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.brand-text {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--vb-text);
-  white-space: nowrap;
-  overflow: hidden;
-}
-
 .sidebar-nav {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 0 10px;
+  padding: 12px 10px 0;
   -webkit-app-region: no-drag;
 }
 
@@ -193,7 +162,6 @@ function openSettings() {
   overflow: hidden;
 }
 
-/* hover zone on sidebar border - half in, half out */
 .hover-zone {
   position: absolute;
   right: 0;
@@ -205,7 +173,6 @@ function openSettings() {
   -webkit-app-region: no-drag;
 }
 
-/* collapse toggle - fills hover zone, hidden until hover */
 .sidebar-toggle {
   width: 100%;
   height: 100%;
@@ -237,20 +204,13 @@ function openSettings() {
   width: 64px;
 }
 
-.sidebar-collapsed .sidebar-brand {
-  padding-left: 14px;
-  padding-right: 14px;
-  justify-content: center;
-}
-
-.sidebar-collapsed .brand-text,
 .sidebar-collapsed .nav-item span,
 .sidebar-collapsed .settings-btn span {
   display: none;
 }
 
 .sidebar-collapsed .sidebar-nav {
-  padding: 0 10px;
+  padding: 12px 10px 0;
 }
 
 .sidebar-collapsed .nav-item {
@@ -288,47 +248,5 @@ function openSettings() {
 .page-fade-leave-to {
   opacity: 0;
   transform: translateY(-6px);
-}
-
-@media (max-width: 760px) {
-  .sidebar {
-    width: 64px;
-  }
-
-  .brand-text,
-  .nav-item span,
-  .settings-btn span {
-    display: none;
-  }
-
-  .sidebar-brand {
-    padding-left: 14px;
-    padding-right: 14px;
-    justify-content: center;
-  }
-
-  .sidebar-toggle {
-    display: none;
-  }
-
-  .sidebar-nav {
-    padding: 0 10px;
-  }
-
-  .nav-item {
-    justify-content: center;
-    padding: 10px;
-  }
-
-  .sidebar-footer {
-    display: flex;
-    align-items: center;
-    padding: 12px 10px;
-  }
-
-  .settings-btn {
-    justify-content: center;
-    padding: 10px;
-  }
 }
 </style>

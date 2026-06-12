@@ -1,3 +1,4 @@
+import { app } from 'electron'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
@@ -11,18 +12,65 @@ interface Attempt {
   args: string[]
 }
 
+interface SiteStrategy {
+  userAgent: string
+  headers?: string[]
+  extractorArgs?: (settings: AppSettings) => string[]
+  cookies?: () => string[]
+}
+
 const DESKTOP_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
 
 const MOBILE_UA =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36'
 
+const SITE_STRATEGIES: Record<SiteKind, SiteStrategy> = {
+  bilibili: {
+    userAgent: DESKTOP_UA,
+    headers: ['Referer:https://www.bilibili.com/', 'Origin:https://www.bilibili.com'],
+    cookies: () => {
+      const biliCookiePath = getBiliCookiePath()
+      return biliCookiePath && fs.existsSync(biliCookiePath) ? ['--cookies', biliCookiePath] : []
+    }
+  },
+  tiktok: {
+    userAgent: DESKTOP_UA,
+    headers: ['Referer:https://www.tiktok.com/', 'Origin:https://www.tiktok.com']
+  },
+  douyin: {
+    userAgent: MOBILE_UA,
+    headers: ['Referer:https://www.douyin.com/', 'Origin:https://www.douyin.com'],
+    extractorArgs: () => ['douyin:player_client=android'],
+    cookies: () => {
+      const douyinCookiePath = getDouyinCookiePath()
+      return douyinCookiePath && fs.existsSync(douyinCookiePath) ? ['--cookies', douyinCookiePath] : []
+    }
+  },
+  youtube: {
+    userAgent: DESKTOP_UA,
+    headers: ['Referer:https://www.youtube.com/', 'Origin:https://www.youtube.com'],
+    extractorArgs: () => {
+      const denoPath = getDenoPath()
+      return denoPath ? [`youtube:js_runtime=${denoPath.replace(/\\/g, '/')}`] : []
+    }
+  },
+  generic: {
+    userAgent: DESKTOP_UA
+  }
+}
+
 function getDenoPath(): string | null {
-  const candidates = [
-    path.join(__dirname, '../../../resources/deno.exe'),
-    path.join(process.cwd(), 'resources/deno.exe'),
-    path.join(process.resourcesPath || '', 'deno.exe')
-  ]
+  const isDev = !app.isPackaged
+  const candidates = isDev
+    ? [
+        path.join(__dirname, '../../../resources/deno.exe'),
+        path.join(process.cwd(), 'resources/deno.exe')
+      ]
+    : [
+        path.join(process.resourcesPath, 'deno.exe'),
+        path.join(process.resourcesPath, 'resources/deno.exe')
+      ]
   for (const p of candidates) {
     if (fs.existsSync(p)) return p
   }
@@ -53,17 +101,50 @@ export function buildParseAttempts(url: string, settings: AppSettings = defaultS
 
   if (site === 'douyin') {
     const common = buildCommonArgs(cleanUrl, settings)
-    const filtered = common.filter((a, i, arr) => {
+
+    // Filter out any existing player_client extractor args
+    const noExtractorArgs = common.filter((a, i, arr) => {
       if (a === '--extractor-args' && arr[i + 1]?.includes('player_client')) return false
       if (a.includes('player_client')) return false
       return true
     })
+
+    // Also filter out cookie args for attempts that don't need them
+    const noCookies = noExtractorArgs.filter((a, i, arr) => {
+      if (a === '--cookies' && arr[i + 1]?.endsWith('cookies.txt')) return false
+      if (i > 0 && arr[i - 1] === '--cookies' && a.endsWith('cookies.txt')) return false
+      return true
+    })
+
+    // Attempt 2: mobile client with download flag
     attempts.push({
       label: 'douyin:mobile',
       args: [
-        ...filtered,
+        ...noCookies,
         '--extractor-args',
         'douyin:player_client=android;download=True'
+      ]
+    })
+
+    // Attempt 3: web client (douyin web version)
+    attempts.push({
+      label: 'douyin:web',
+      args: [
+        ...noCookies,
+        '--extractor-args',
+        'douyin:player_client=web;download=True'
+      ]
+    })
+
+    // Attempt 4: bare minimum — no cookies, no extractor args, no headers beyond UA
+    attempts.push({
+      label: 'douyin:fallback',
+      args: [
+        '--no-check-certificates',
+        '--geo-bypass',
+        '--extractor-retries', '5',
+        '--fragment-retries', '20',
+        '--user-agent', MOBILE_UA
       ]
     })
   }
@@ -74,12 +155,20 @@ export function buildParseAttempts(url: string, settings: AppSettings = defaultS
   }))
 }
 
+export interface SubtitleOptions {
+  writeSubs?: boolean
+  writeAutoSubs?: boolean
+  subLangs?: string
+  embedSubs?: boolean
+}
+
 export function buildDownloadArgs(
   url: string,
   formatId: string,
   outputTemplate: string,
   ffmpegPath: string,
-  settings: AppSettings = defaultSettings
+  settings: AppSettings = defaultSettings,
+  subs?: SubtitleOptions
 ): string[] {
   const downloadSettings: AppSettings = settings.cookieMode === 'auto'
     ? { ...settings, cookieMode: 'none' }
@@ -98,6 +187,11 @@ export function buildDownloadArgs(
   if (ffmpegPath) {
     args.push('--ffmpeg-location', ffmpegPath)
   }
+
+  if (subs?.writeSubs) args.push('--write-subs')
+  if (subs?.writeAutoSubs) args.push('--write-auto-subs')
+  if (subs?.subLangs) args.push('--sub-langs', subs.subLangs)
+  if (subs?.embedSubs) args.push('--embed-subs')
 
   return args
 }
@@ -135,46 +229,33 @@ function buildAttempts(url: string, settings: AppSettings): Attempt[] {
   return attempts.length > 0 ? attempts : [{ label: 'no-cookies', args: common }]
 }
 
+export function buildCommonArgsForUrl(url: string, settings: AppSettings = defaultSettings): string[] {
+  return buildCommonArgs(url, settings)
+}
+
 function buildCommonArgs(url: string, settings: AppSettings): string[] {
   const site = detectSite(url)
+  const strategy = SITE_STRATEGIES[site]
   const args = [
     '--no-check-certificates',
     '--geo-bypass',
     '--extractor-retries', '3',
-    '--fragment-retries', '10'
+    '--fragment-retries', '10',
+    '--user-agent', strategy.userAgent
   ]
 
-  if (site === 'bilibili') {
-    args.push(
-      '--user-agent', DESKTOP_UA,
-      '--add-header', 'Referer:https://www.bilibili.com/',
-      '--add-header', 'Origin:https://www.bilibili.com'
-    )
-  } else if (site === 'tiktok') {
-    args.push(
-      '--user-agent', DESKTOP_UA,
-      '--add-header', 'Referer:https://www.tiktok.com/',
-      '--add-header', 'Origin:https://www.tiktok.com'
-    )
-  } else if (site === 'douyin') {
-    args.push(
-      '--user-agent', MOBILE_UA,
-      '--add-header', 'Referer:https://www.douyin.com/',
-      '--add-header', 'Origin:https://www.douyin.com',
-      '--extractor-args', 'douyin:player_client=android'
-    )
-  } else if (site === 'youtube') {
-    args.push(
-      '--user-agent', DESKTOP_UA,
-      '--add-header', 'Referer:https://www.youtube.com/',
-      '--add-header', 'Origin:https://www.youtube.com'
-    )
-    const denoPath = getDenoPath()
-    if (denoPath) {
-      args.push('--extractor-args', `youtube:js_runtime=${denoPath.replace(/\\/g, '/')}`)
-    }
-  } else {
-    args.push('--user-agent', DESKTOP_UA)
+  for (const header of strategy.headers ?? []) {
+    args.push('--add-header', header)
+  }
+
+  const extractorArgs = strategy.extractorArgs?.(settings) ?? []
+  for (const extractorArg of extractorArgs) {
+    args.push('--extractor-args', extractorArg)
+  }
+
+  const cookieArgs = strategy.cookies?.() ?? []
+  if (cookieArgs.length > 0) {
+    args.push(...cookieArgs)
   }
 
   if (settings.proxy.trim()) {
@@ -226,4 +307,20 @@ function getCookieBrowserCandidates(settings: AppSettings): CookieBrowser[] {
   return candidates
     .filter(([, profileDir]) => fs.existsSync(profileDir))
     .map(([browser]) => browser as CookieBrowser)
+}
+
+function getBiliCookiePath(): string | null {
+  try {
+    return path.join(app.getPath('userData'), 'bilibili-cookies.txt')
+  } catch {
+    return null
+  }
+}
+
+function getDouyinCookiePath(): string | null {
+  try {
+    return path.join(app.getPath('userData'), 'douyin-cookies.txt')
+  } catch {
+    return null
+  }
 }

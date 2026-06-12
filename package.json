@@ -1,6 +1,6 @@
 {
-  "name": "videobox",
-  "version": "1.0.0",
+  "name": "clippick",
+  "version": "1.10.0",
   "description": "桌面视频下载工具",
   "main": "./out/main/index.js",
   "scripts": {
@@ -16,15 +16,18 @@
     "@element-plus/icons-vue": "^2.3.2",
     "element-plus": "^2.14.1",
     "pinia": "^3.0.4",
+    "qrcode": "^1.5.4",
     "vue": "^3.5.35",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
     "@vitejs/plugin-vue": "^5.2.4",
-    "electron": "^28.3.3",
-    "electron-builder": "^24.13.3",
+    "electron": "^34.5.8",
+    "electron-builder": "^25.1.8",
     "electron-vite": "^3.1.0",
+    "rcedit": "^5.0.2",
+    "to-ico": "^1.1.5",
     "typescript": "^6.0.3"
   }
 }

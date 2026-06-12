@@ -3,6 +3,7 @@
 export const IpcChannels = {
   // yt-dlp
   YTDLP_PARSE_URL: 'yt-dlp:parse-url',
+  YTDLP_PARSE_PLAYLIST: 'yt-dlp:parse-playlist',
   YTDLP_GET_VERSION: 'yt-dlp:get-version',
 
   // Download
@@ -30,13 +31,40 @@ export const IpcChannels = {
   HISTORY_DELETE: 'history:delete',
   HISTORY_CLEAR: 'history:clear',
 
+  // Saved URLs
+  SAVED_URLS_LIST: 'saved-urls:list',
+  SAVED_URLS_ADD: 'saved-urls:add',
+  SAVED_URLS_DELETE: 'saved-urls:delete',
+
   // Settings
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE: 'settings:update',
 
+  // File
+  FILE_EXISTS: 'file:exists',
+  FILE_DELETE: 'file:delete',
+  FILE_SHOW_IN_FOLDER: 'file:showInFolder',
+
+  // Bilibili
+  BILIBILI_GENERATE_QR: 'bilibili:generate-qr',
+  BILIBILI_POLL_LOGIN: 'bilibili:poll-login',
+  BILIBILI_GET_STATE: 'bilibili:get-state',
+  BILIBILI_CLEAR_COOKIES: 'bilibili:clear-cookies',
+  BILIBILI_CHECK_COOKIES: 'bilibili:check-cookies',
+
   // App
   APP_GET_VERSION: 'app:get-version',
-  APP_OPEN_EXTERNAL: 'app:open-external'
+  APP_OPEN_EXTERNAL: 'app:open-external',
+
+  // Version check
+  VERSION_CHECK: 'app:version-check',
+
+  // Download recovery
+  DOWNLOAD_RECOVER: 'download:recover',
+
+  // Translation
+  TRANSLATE: 'translate:request',
+  TRANSLATE_SET_KEY: 'translate:set-key'
 } as const
 
 // ============ 视频解析 ============
@@ -58,6 +86,30 @@ export interface VideoFormat {
   note: string
 }
 
+export interface SubtitleInfo {
+  lang: string
+  label: string
+  kind: 'manual' | 'auto'
+}
+
+export interface PlaylistEntry {
+  id: string
+  title: string
+  url: string
+  duration: number
+  thumbnail: string
+  uploader: string
+  index: number
+}
+
+export interface PlaylistParseResult {
+  id: string
+  title: string
+  uploader: string
+  entryCount: number
+  entries: PlaylistEntry[]
+}
+
 export interface VideoParseResult {
   id: string
   title: string
@@ -68,6 +120,7 @@ export interface VideoParseResult {
   description: string
   webpageUrl: string
   formats: VideoFormat[]
+  subtitles: SubtitleInfo[]
 }
 
 // ============ 下载 ============
@@ -77,6 +130,11 @@ export interface StartDownloadRequest {
   formatId: string
   outputDir: string
   filename: string
+  formatLabel?: string
+  writeSubs?: boolean
+  writeAutoSubs?: boolean
+  subLangs?: string
+  embedSubs?: boolean
 }
 
 export type CookieMode = 'auto' | 'browser' | 'file' | 'none'
@@ -88,9 +146,12 @@ export interface AppSettings {
   cookieMode: CookieMode
   cookieBrowser: CookieBrowser
   cookiesFile: string
+  biliCookieHours: number
   proxy: string
   downloadNotifications: boolean
   autoRetryCount: number
+  translateProfiles: TranslateProfile[]
+  activeProfileId: string
 }
 
 export type DownloadStatus =
@@ -143,6 +204,30 @@ export interface ErrorPayload {
   detail?: string
 }
 
+export interface BiliQrResult {
+  qrcode_key: string
+  qrUrl: string
+}
+
+export interface BiliPollResult {
+  status: 'waiting' | 'scanned' | 'confirmed' | 'expired'
+  message: string
+  nickname?: string
+  cookiesPath?: string
+}
+
+export interface BiliLoginState {
+  loggedIn: boolean
+  expired: boolean
+  nickname?: string
+  cookiesPath?: string
+}
+
+export interface FileOpResult {
+  ok: boolean
+  message?: string
+}
+
 export interface OpenPathResult {
   ok: boolean
   message?: string
@@ -174,6 +259,17 @@ export interface HistoryEntry {
   errorMessage?: string
 }
 
+// ============ Saved URLs (Bookmarks) ============
+
+export interface SavedUrlEntry {
+  id: string
+  url: string
+  title: string
+  thumbnail: string
+  uploader: string
+  savedAt: string
+}
+
 // ============ FFmpeg ============
 
 export interface FfmpegRequest {
@@ -191,4 +287,28 @@ export interface FfmpegTask {
   progress: number
   status: 'running' | 'completed' | 'error'
   error?: string
+}
+
+export interface VersionCheckResult {
+  ytDlp: { current: string; latest: string; outdated: boolean }
+  ffmpeg: { current: string; latest: string; outdated: boolean }
+}
+
+// ============ 翻译 ============
+
+export interface TranslateProfile {
+  id: string
+  name: string
+  endpoint: string
+  model: string
+  hasKey: boolean
+}
+
+export interface TranslateRequest {
+  text: string
+  profileId?: string
+}
+
+export interface TranslateResult {
+  translatedText: string
 }
