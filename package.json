@@ -1,6 +1,6 @@
 {
   "name": "clippick",
-  "version": "1.10.3",
+  "version": "1.10.4",
   "description": "桌面视频下载工具",
   "main": "./out/main/index.js",
   "scripts": {

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { AppSettings, CookieBrowser, CookieMode } from '../../../shared/types'
+import type { AppSettings, CookieBrowser, CookieMode, TranslateProfile } from '../../../shared/types'
 
 const fallbackSettings: AppSettings = {
   defaultSavePath: '',
@@ -8,9 +8,12 @@ const fallbackSettings: AppSettings = {
   cookieMode: 'auto',
   cookieBrowser: 'edge',
   cookiesFile: '',
+  biliCookieHours: 168,
   proxy: '',
   downloadNotifications: true,
-  autoRetryCount: 1
+  autoRetryCount: 1,
+  translateProfiles: [],
+  activeProfileId: ''
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -19,9 +22,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const cookieMode = ref<CookieMode>(fallbackSettings.cookieMode)
   const cookieBrowser = ref<CookieBrowser>(fallbackSettings.cookieBrowser)
   const cookiesFile = ref(fallbackSettings.cookiesFile)
+  const biliCookieHours = ref(fallbackSettings.biliCookieHours)
   const proxy = ref(fallbackSettings.proxy)
   const downloadNotifications = ref(fallbackSettings.downloadNotifications)
   const autoRetryCount = ref(fallbackSettings.autoRetryCount)
+  const translateProfiles = ref<TranslateProfile[]>(fallbackSettings.translateProfiles)
+  const activeProfileId = ref(fallbackSettings.activeProfileId)
   const loaded = ref(false)
 
   const settings = computed<AppSettings>(() => ({
@@ -30,9 +36,12 @@ export const useSettingsStore = defineStore('settings', () => {
     cookieMode: cookieMode.value,
     cookieBrowser: cookieBrowser.value,
     cookiesFile: cookiesFile.value,
+    biliCookieHours: biliCookieHours.value,
     proxy: proxy.value,
     downloadNotifications: downloadNotifications.value,
-    autoRetryCount: autoRetryCount.value
+    autoRetryCount: autoRetryCount.value,
+    translateProfiles: translateProfiles.value,
+    activeProfileId: activeProfileId.value
   }))
 
   async function loadFromLocal() {
@@ -50,15 +59,23 @@ export const useSettingsStore = defineStore('settings', () => {
     applySettings(updated)
   }
 
+  async function setApiKey(profileId: string, key: string) {
+    const updated = await window.api.setDeepseekKey(profileId, key)
+    applySettings(updated)
+  }
+
   function applySettings(next: Partial<AppSettings>) {
     defaultSavePath.value = next.defaultSavePath ?? fallbackSettings.defaultSavePath
     concurrentDownloads.value = next.concurrentDownloads ?? fallbackSettings.concurrentDownloads
     cookieMode.value = next.cookieMode ?? fallbackSettings.cookieMode
     cookieBrowser.value = next.cookieBrowser ?? fallbackSettings.cookieBrowser
     cookiesFile.value = next.cookiesFile ?? fallbackSettings.cookiesFile
+    biliCookieHours.value = next.biliCookieHours ?? fallbackSettings.biliCookieHours
     proxy.value = next.proxy ?? fallbackSettings.proxy
     downloadNotifications.value = next.downloadNotifications ?? fallbackSettings.downloadNotifications
     autoRetryCount.value = next.autoRetryCount ?? fallbackSettings.autoRetryCount
+    translateProfiles.value = next.translateProfiles ?? fallbackSettings.translateProfiles
+    activeProfileId.value = next.activeProfileId ?? fallbackSettings.activeProfileId
   }
 
   function readLegacySettings(): AppSettings {
@@ -77,13 +94,17 @@ export const useSettingsStore = defineStore('settings', () => {
     cookieMode,
     cookieBrowser,
     cookiesFile,
+    biliCookieHours,
     proxy,
     downloadNotifications,
     autoRetryCount,
+    translateProfiles,
+    activeProfileId,
     loaded,
     settings,
     loadFromLocal,
     saveSettings,
+    setApiKey,
     applySettings
   }
 })

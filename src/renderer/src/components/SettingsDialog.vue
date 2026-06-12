@@ -61,12 +61,81 @@
         </div>
       </section>
 
+      <section v-if="activeTab === 'translate'">
+        <div class="notice-card" style="border-color: rgba(59, 130, 246, 0.22); background: var(--vb-info-bg);">
+          <strong style="color: #1e40af;">AI 翻译说明</strong>
+          <span style="color: #2563eb;">翻译功能调用 DeepSeek API，需自行申请 API Key。费用极低，按用量计费。</span>
+        </div>
+        <div v-for="(profile, idx) in draft.translateProfiles" :key="profile.id" class="profile-card">
+          <div class="profile-header">
+            <span class="profile-name">{{ profile.name }}</span>
+            <span v-if="profile.hasKey" class="profile-key-status">已配置 Key</span>
+            <span v-else class="profile-key-status missing">未配置 Key</span>
+          </div>
+          <div class="profile-body">
+            <div class="profile-field">
+              <label>API 地址</label>
+              <el-input v-model="profile.endpoint" size="small" placeholder="https://api.deepseek.com/v1" />
+            </div>
+            <div class="profile-field">
+              <label>模型名称</label>
+              <el-input v-model="profile.model" size="small" placeholder="deepseek-chat" />
+            </div>
+            <div class="profile-field">
+              <label>API Key</label>
+              <el-input
+                :model-value="profileKeys[idx] || ''"
+                type="password"
+                show-password
+                size="small"
+                placeholder="sk-..."
+                @update:model-value="onKeyChange(idx, $event)"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="activeTab === 'bilibili'">
+        <div class="notice-card" style="border-color: rgba(251, 114, 153, 0.22); background: rgba(251, 114, 153, 0.06);">
+          <strong style="color: #be185d;">B站登录</strong>
+          <span style="color: #db2777;">登录后可下载高清视频及番剧资源。Cookie 会安全保存在本地。</span>
+        </div>
+        <div class="bili-section">
+          <div class="bili-status-row">
+            <span>状态：</span>
+            <span v-if="biliState.loggedIn && !biliState.expired" class="bili-status success">
+              已登录{{ biliState.nickname ? `（${biliState.nickname}）` : '' }}
+            </span>
+            <span v-else class="bili-status muted">未登录</span>
+          </div>
+          <div class="bili-actions">
+            <el-button type="primary" size="small" @click="biliDialogVisible = true">
+              {{ biliState.loggedIn && !biliState.expired ? '重新登录' : '扫码登录' }}
+            </el-button>
+            <el-button
+              v-if="biliState.loggedIn"
+              size="small"
+              plain
+              type="danger"
+              @click="handleBiliLogout"
+            >
+              退出登录
+            </el-button>
+          </div>
+        </div>
+      </section>
+
       <section v-if="activeTab === 'notify'">
-        <SettingRow title="下载完成通知" desc="任务完成后显示应用内通知。">
+        <SettingRow title="下载完成通知" desc="任务完成后显示桌面通知。">
           <el-switch v-model="draft.downloadNotifications" size="small" />
         </SettingRow>
       </section>
     </div>
+
+    <el-dialog v-model="biliDialogVisible" title="B站登录" width="360px" top="8vh" destroy-on-close>
+      <BilibiliLoginDialog @close="biliDialogVisible = false" @logged-in="onBiliLoggedIn" />
+    </el-dialog>
 
     <template #footer>
       <div class="dialog-footer">
@@ -81,25 +150,30 @@
 </template>
 
 <script setup lang="ts">
-import { Bell, Connection, Download, Key } from '@element-plus/icons-vue'
+import { Bell, ChatLineSquare, Connection, Download, Key, UserFilled } from '@element-plus/icons-vue'
 import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSettingsStore } from '../stores/settings.store'
-import type { AppSettings } from '../../../shared/types'
+import type { AppSettings, TranslateProfile } from '../../../shared/types'
 import SettingRow from './SettingRow.vue'
+import BilibiliLoginDialog from './BilibiliLoginDialog.vue'
 
-type TabKey = 'download' | 'cookie' | 'network' | 'notify'
+type TabKey = 'download' | 'cookie' | 'network' | 'notify' | 'translate' | 'bilibili'
 
 const settingsStore = useSettingsStore()
 const visible = ref(false)
 const saving = ref(false)
 const version = ref('1.0.0')
 const activeTab = ref<TabKey>('download')
+const biliDialogVisible = ref(false)
+const biliState = ref<{ loggedIn: boolean; expired: boolean; nickname?: string }>({ loggedIn: false, expired: false })
 
 const tabs = [
   { key: 'download', label: '下载', icon: Download },
   { key: 'cookie', label: 'Cookie', icon: Key },
   { key: 'network', label: '网络', icon: Connection },
+  { key: 'translate', label: '翻译', icon: ChatLineSquare },
+  { key: 'bilibili', label: 'B站', icon: UserFilled },
   { key: 'notify', label: '通知', icon: Bell }
 ] as const
 
@@ -118,11 +192,35 @@ const displaySavePath = computed(() => {
   return '项目默认目录（downloads/）'
 })
 
+const profileKeys = ref<string[]>([])
+
 async function open() {
   if (!settingsStore.loaded) await settingsStore.loadFromLocal()
   Object.assign(draft, settingsStore.settings)
+  // Ensure translate profiles default
+  if (!draft.translateProfiles || draft.translateProfiles.length === 0) {
+    draft.translateProfiles = [
+      { id: 'default', name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1', model: 'deepseek-chat', hasKey: false }
+    ]
+  }
+  profileKeys.value = draft.translateProfiles.map(() => '')
   try { version.value = await window.api.getAppVersion() } catch { /* use default */ }
+  try { biliState.value = await window.api.getBiliState() } catch { /* ignore */ }
   visible.value = true
+}
+
+function onKeyChange(idx: number, value: string) {
+  profileKeys.value[idx] = value
+}
+
+function onBiliLoggedIn() {
+  try { window.api.getBiliState().then(s => { biliState.value = s }) } catch { /* ignore */ }
+}
+
+async function handleBiliLogout() {
+  await window.api.clearBiliCookies()
+  biliState.value = { loggedIn: false, expired: false }
+  ElMessage.success('已退出B站登录')
 }
 
 async function selectPath() {
@@ -133,7 +231,19 @@ async function selectPath() {
 async function save() {
   saving.value = true
   try {
-    await settingsStore.saveSettings({ ...draft })
+    // Save API keys for each profile
+    for (let i = 0; i < draft.translateProfiles.length; i++) {
+      const key = profileKeys.value[i]
+      if (key) {
+        await window.api.setDeepseekKey(draft.translateProfiles[i].id, key)
+      }
+    }
+    const saveData = { ...draft }
+    // Remove hasKey from profiles before saving (it's derived)
+    saveData.translateProfiles = draft.translateProfiles.map(p => ({
+      id: p.id, name: p.name, endpoint: p.endpoint, model: p.model, hasKey: p.hasKey
+    }))
+    await settingsStore.saveSettings(saveData)
     ElMessage.success('设置已保存')
     visible.value = false
   } finally {
@@ -222,6 +332,83 @@ defineExpose({ open })
 .notice-card span {
   color: #a16207;
   font-size: 12px;
+}
+
+/* ── 翻译 ── */
+.profile-card {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--vb-border);
+  border-radius: var(--vb-radius-sm);
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.profile-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vb-text);
+}
+
+.profile-key-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--vb-success-bg);
+  color: var(--vb-success);
+}
+.profile-key-status.missing {
+  background: var(--vb-bg-hover);
+  color: var(--vb-text-tertiary);
+}
+
+.profile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-field label {
+  font-size: 12px;
+  color: var(--vb-text-secondary);
+  font-weight: 500;
+}
+
+/* ── B站 ── */
+.bili-section {
+  padding: 4px 0;
+}
+
+.bili-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: var(--vb-text-secondary);
+}
+
+.bili-status {
+  font-weight: 600;
+}
+.bili-status.success { color: var(--vb-success); }
+.bili-status.muted { color: var(--vb-text-tertiary); }
+
+.bili-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .example-list {
