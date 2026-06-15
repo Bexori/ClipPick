@@ -1,23 +1,26 @@
-import { app } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 
-export function getBinaryPath(binaryName: string): string {
-  const isDev = !app.isPackaged
-  const resourcesPath = isDev
-    ? path.join(__dirname, '../../../resources')
-    : path.join(process.resourcesPath)
+function candidatePaths(resourceName: string): string[] {
+  const devRoot = path.join(__dirname, '../../../resources')
+  const packagedRoot = process.resourcesPath
+  return [
+    path.join(devRoot, resourceName),
+    path.join(process.cwd(), 'resources', resourceName),
+    path.join(packagedRoot, resourceName),
+    path.join(packagedRoot, 'resources', resourceName)
+  ]
+}
 
-  const binaryPath = path.join(resourcesPath, binaryName)
-
-  if (fs.existsSync(binaryPath)) {
-    return binaryPath
+export function getResourcePath(resourceName: string): string {
+  for (const candidate of candidatePaths(resourceName)) {
+    if (fs.existsSync(candidate)) return candidate
   }
+  throw new Error(`Resource not found: ${resourceName}`)
+}
 
-  const devFallback = path.join(process.cwd(), 'resources', binaryName)
-  if (fs.existsSync(devFallback)) return devFallback
-
-  throw new Error(`Binary not found: ${binaryName}`)
+export function getBinaryPath(binaryName: string): string {
+  return getResourcePath(binaryName)
 }
 
 export function getFfmpegPath(): string {

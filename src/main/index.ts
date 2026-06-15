@@ -10,6 +10,7 @@ import { SettingsService } from './services/settings.service'
 import { BilibiliAuthService } from './services/bilibili-auth.service'
 import { SavedUrlsService } from './services/saved-urls.service'
 import { logger } from './utils/logger'
+import { getResourcePath } from './utils/paths'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -56,9 +57,7 @@ function createWindow(): void {
   logger.info(`preload path: ${preloadPath}  exists=${existsSync(preloadPath)}`)
   logger.info(`renderer index path: ${indexPath}  exists=${existsSync(indexPath)}`)
 
-  const iconPath = app.isPackaged
-    ? join(process.resourcesPath, 'resources', 'icon.ico')
-    : join(__dirname, '../../resources/icon.ico')
+  const iconPath = getResourcePath('icon.ico')
   logger.info(`icon path: ${iconPath}  exists=${existsSync(iconPath)}`)
 
   const winIcon = existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined
