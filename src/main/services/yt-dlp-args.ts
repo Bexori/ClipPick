@@ -170,18 +170,22 @@ export function buildDownloadArgs(
   settings: AppSettings = defaultSettings,
   subs?: SubtitleOptions
 ): string[] {
-  const downloadSettings: AppSettings = settings.cookieMode === 'auto'
-    ? { ...settings, cookieMode: 'none' }
-    : settings
-
   const args = [
+    '--no-check-certificates',
+    '--geo-bypass',
+    '--extractor-retries', '3',
+    '--fragment-retries', '10',
+    '--user-agent', SITE_STRATEGIES[detectSite(url)].userAgent,
+    ...buildDownloadCookieArgs(url, settings),
+    ...(SITE_STRATEGIES[detectSite(url)].headers ?? []).flatMap(header => ['--add-header', header]),
+    ...(SITE_STRATEGIES[detectSite(url)].extractorArgs?.(settings) ?? []).flatMap(arg => ['--extractor-args', arg]),
+    ...(settings.proxy.trim() ? ['--proxy', settings.proxy.trim()] : []),
     url,
     '-f', formatId || 'bestvideo+bestaudio/best',
     '-o', outputTemplate,
     '--newline',
     '--merge-output-format', 'mp4',
-    '--no-playlist',
-    ...buildAttempts(url, downloadSettings)[0].args
+    '--no-playlist'
   ]
 
   if (ffmpegPath) {
@@ -194,6 +198,32 @@ export function buildDownloadArgs(
   if (subs?.embedSubs) args.push('--embed-subs')
 
   return args
+}
+
+function buildDownloadCookieArgs(url: string, settings: AppSettings): string[] {
+  const site = detectSite(url)
+  const cookieMode = settings.cookieMode
+
+  if (cookieMode === 'file' && settings.cookiesFile.trim()) {
+    return ['--cookies', settings.cookiesFile.trim()]
+  }
+
+  if (cookieMode === 'browser') {
+    const browser = getCookieBrowserCandidates(settings)[0]
+    return browser ? ['--cookies-from-browser', browser] : []
+  }
+
+  if (site === 'bilibili') {
+    const biliCookiePath = getBiliCookiePath()
+    return biliCookiePath && fs.existsSync(biliCookiePath) ? ['--cookies', biliCookiePath] : []
+  }
+
+  if (site === 'douyin') {
+    const douyinCookiePath = getDouyinCookiePath()
+    return douyinCookiePath && fs.existsSync(douyinCookiePath) ? ['--cookies', douyinCookiePath] : []
+  }
+
+  return []
 }
 
 function buildAttempts(url: string, settings: AppSettings): Attempt[] {

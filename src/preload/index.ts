@@ -68,6 +68,8 @@ const api = {
     ipcRenderer.invoke('saved-urls:add', entry),
   deleteSavedUrl: (id: string): Promise<void> =>
     ipcRenderer.invoke('saved-urls:delete', { id }),
+  deleteSavedUrlByUrl: (url: string): Promise<boolean> =>
+    ipcRenderer.invoke('saved-urls:delete-by-url', { url }),
 
   // Bilibili
   generateBiliQr: (): Promise<import('../shared/types').BiliQrResult> =>

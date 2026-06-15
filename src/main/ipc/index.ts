@@ -253,7 +253,11 @@ export function registerIpcHandlers(
   })
 
   ipcMain.handle(IpcChannels.SAVED_URLS_DELETE, (_event, { id }: { id: string }) => {
-    savedUrls.delete(id)
+    return savedUrls.delete(id)
+  })
+
+  ipcMain.handle(IpcChannels.SAVED_URLS_DELETE_BY_URL, (_event, { url }: { url: string }) => {
+    return savedUrls.deleteByUrl(url)
   })
 
   // ========== Bilibili ==========

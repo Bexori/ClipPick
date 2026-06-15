@@ -35,6 +35,7 @@ export const IpcChannels = {
   SAVED_URLS_LIST: 'saved-urls:list',
   SAVED_URLS_ADD: 'saved-urls:add',
   SAVED_URLS_DELETE: 'saved-urls:delete',
+  SAVED_URLS_DELETE_BY_URL: 'saved-urls:delete-by-url',
 
   // Settings
   SETTINGS_GET: 'settings:get',
@@ -221,6 +222,9 @@ export interface BiliLoginState {
   expired: boolean
   nickname?: string
   cookiesPath?: string
+  expiresAt?: string
+  expiresInSeconds?: number
+  expiresInText?: string
 }
 
 export interface FileOpResult {

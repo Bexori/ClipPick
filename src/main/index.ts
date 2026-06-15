@@ -13,7 +13,7 @@ import { logger } from './utils/logger'
 
 let mainWindow: BrowserWindow | null = null
 
-app.setAppUserModelId('影拾')
+app.setAppUserModelId('ClipPick')
 
 app.disableHardwareAcceleration()
 app.commandLine.appendSwitch('disable-gpu')
@@ -82,7 +82,7 @@ function createWindow(): void {
   if (!app.isPackaged) {
     mainWindow.on('page-title-updated', (event) => {
       event.preventDefault()
-      mainWindow?.setTitle('影拾 (开发版)')
+      mainWindow?.setTitle('ClipPick (开发版)')
     })
   }
 

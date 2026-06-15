@@ -14,33 +14,39 @@
       </button>
     </div>
 
-    <el-collapse-transition>
-      <div v-if="showAdvanced" class="advanced-panel">
-        <el-select
-          :model-value="modelValue"
-          filterable
-          placeholder="选择更多格式"
-          class="advanced-select"
-          @update:model-value="select"
-        >
-          <el-option
-            v-for="format in formats"
-            :key="format.formatId"
-            :label="formatLabel(format)"
-            :value="format.formatId"
-          />
-        </el-select>
-      </div>
-    </el-collapse-transition>
+    <div v-if="extraOptions.length > 0" class="advanced-wrap">
+      <button type="button" class="advanced-toggle" @click="showAdvanced = !showAdvanced">
+        <span>{{ showAdvanced ? '收起更多格式' : `展开更多格式 (${extraOptions.length})` }}</span>
+        <el-icon :size="14">
+          <ArrowDown v-if="!showAdvanced" />
+          <ArrowUp v-else />
+        </el-icon>
+      </button>
 
-    <button type="button" class="advanced-toggle" @click="showAdvanced = !showAdvanced">
-      {{ showAdvanced ? '收起更多格式' : '更多格式' }}
-    </button>
+      <el-collapse-transition>
+        <div v-show="showAdvanced" class="advanced-panel">
+          <div class="advanced-grid">
+            <button
+              v-for="format in extraOptions"
+              :key="format.formatId"
+              type="button"
+              class="advanced-card"
+              :class="{ active: modelValue === format.formatId }"
+              @click="select(format.formatId)"
+            >
+              <span class="advanced-title">{{ formatSummary(format) }}</span>
+              <span class="advanced-meta">{{ formatLabel(format) }}</span>
+            </button>
+          </div>
+        </div>
+      </el-collapse-transition>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import type { VideoFormat } from '../../../shared/types'
 
 const props = defineProps<{
@@ -54,51 +60,40 @@ const emit = defineEmits<{
 
 const showAdvanced = ref(false)
 
-const primaryOptions = computed(() => {
-  const options = [
-    buildOption('最佳画质', findBestVideo()),
-    buildOption('1080p', findByHeight(1080)),
-    buildOption('720p', findByHeight(720)),
-    buildOption('仅音频', findBestAudio())
-  ].filter((item): item is { name: string; value: string; meta: string } => Boolean(item))
+const sortedFormats = computed(() => [...props.formats].sort((a, b) => {
+  const aScore = formatScore(a)
+  const bScore = formatScore(b)
+  return bScore - aScore
+}))
 
-  const seen = new Set<string>()
-  return options.filter((item) => {
-    if (seen.has(item.value)) return false
-    seen.add(item.value)
-    return true
-  })
+const primaryOptions = computed(() => sortedFormats.value.slice(0, 4).map((format) => ({
+  name: formatSummary(format),
+  value: format.formatId,
+  meta: formatLabel(format)
+})))
+
+const extraOptions = computed(() => {
+  const primaryValues = new Set(primaryOptions.value.map(item => item.value))
+  return sortedFormats.value.filter(format => !primaryValues.has(format.formatId))
 })
+
+watch(
+  () => props.formats.map(format => format.formatId).join('|'),
+  () => {
+    showAdvanced.value = false
+  }
+)
 
 function select(value: string) {
   emit('update:modelValue', value)
 }
 
-function buildOption(name: string, format?: VideoFormat) {
-  if (!format) return null
-  return {
-    name,
-    value: format.formatId,
-    meta: formatSummary(format)
-  }
-}
-
-function findBestVideo(): VideoFormat | undefined {
-  return [...props.formats]
-    .filter(format => format.hasVideo && format.hasAudio)
-    .sort((a, b) => b.height - a.height || b.filesize - a.filesize)[0]
-}
-
-function findByHeight(height: number): VideoFormat | undefined {
-  return [...props.formats]
-    .filter(format => format.hasVideo && format.hasAudio && format.height <= height)
-    .sort((a, b) => b.height - a.height || b.filesize - a.filesize)[0]
-}
-
-function findBestAudio(): VideoFormat | undefined {
-  return [...props.formats]
-    .filter(format => !format.hasVideo && format.hasAudio)
-    .sort((a, b) => b.audioBitrate - a.audioBitrate || b.filesize - a.filesize)[0]
+function formatScore(format: VideoFormat): number {
+  const qualityScore = format.height > 0 ? format.height * 10_000 : 0
+  const audioScore = !format.hasVideo && format.hasAudio ? 50_000 : 0
+  const audioPenalty = format.hasVideo && !format.hasAudio ? 5_000 : 0
+  const sizeScore = Math.min(format.filesize || 0, 5_000_000_000) / 1000
+  return qualityScore + audioScore - audioPenalty + sizeScore
 }
 
 function formatSummary(format: VideoFormat): string {
@@ -165,28 +160,94 @@ function formatLabel(format: VideoFormat): string {
 .format-meta {
   font-size: 12px;
   color: var(--vb-text-secondary);
+  text-align: left;
+  line-height: 1.35;
 }
 
-.advanced-panel {
-  padding-top: 2px;
-}
-
-.advanced-select {
-  width: 100%;
+.advanced-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .advanced-toggle {
-  align-self: flex-start;
-  border: 0;
-  background: transparent;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--vb-border);
+  border-radius: var(--vb-radius-sm);
+  background: var(--vb-bg-surface);
   color: var(--vb-accent);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  padding: 10px 12px;
+  transition: border-color var(--vb-transition), background var(--vb-transition), color var(--vb-transition);
+}
+
+.advanced-toggle:hover {
+  border-color: var(--vb-accent-light);
+  background: var(--vb-accent-bg);
+}
+
+.advanced-panel {
+  padding: 10px 2px 2px;
+  border-left: 1px solid var(--vb-border-light);
+  margin-left: 10px;
+}
+
+.advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.advanced-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 62px;
+  padding: 10px 12px;
+  border: 1px solid var(--vb-border);
+  border-radius: var(--vb-radius-sm);
+  background: var(--vb-bg-surface);
+  color: var(--vb-text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--vb-transition), background var(--vb-transition), box-shadow var(--vb-transition);
+}
+
+.advanced-card:hover {
+  border-color: var(--vb-accent-light);
+  background: var(--vb-accent-bg);
+}
+
+.advanced-card.active {
+  border-color: var(--vb-accent);
+  background: var(--vb-accent-bg);
+  box-shadow: 0 0 0 3px var(--vb-accent-bg);
+}
+
+.advanced-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.advanced-meta {
+  font-size: 12px;
+  color: var(--vb-text-secondary);
+  line-height: 1.35;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 520px) {
-  .format-grid {
+  .format-grid,
+  .advanced-grid {
     grid-template-columns: 1fr;
   }
 }

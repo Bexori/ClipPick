@@ -1,76 +1,105 @@
 <template>
   <div class="bili-login-dialog">
-    <div v-if="status === 'idle' || status === 'refreshing'" class="bili-state">
-      <p class="bili-state-label">B站扫码登录</p>
-      <p class="bili-state-desc">登录后可下载高清视频及番剧资源</p>
-      <el-button type="primary" :loading="status === 'refreshing'" @click="startLogin">
-        获取二维码
-      </el-button>
-    </div>
-
-    <div v-else-if="status === 'loading'" class="bili-qr-wrap">
-      <p class="bili-hint">请使用 Bilibili 客户端扫描二维码</p>
-      <el-image :src="qrUrl" class="bili-qr-img" fit="contain" />
-      <div class="bili-actions">
-        <el-button size="small" plain @click="$emit('close')">取消</el-button>
-        <el-button size="small" @click="startLogin">刷新二维码</el-button>
+    <div v-if="isLoggedIn && !isExpired" class="state-card">
+      <div class="state-main">
+        <strong>已登录</strong>
+        <span>{{ accountName }}</span>
+      </div>
+      <div class="state-meta">
+        <span>失效：{{ expiresAtLabel }}</span>
+        <span>剩余：{{ expiresInLabel }}</span>
+      </div>
+      <div class="state-actions">
+        <el-button plain type="danger" @click="handleLogout">退出登录</el-button>
+        <el-button type="primary" @click="startLogin">重新登录</el-button>
       </div>
     </div>
 
-    <div v-else-if="status === 'scanned'" class="bili-qr-wrap">
-      <p class="bili-hint success">已扫码，请在手机上确认登录</p>
-      <div class="bili-actions">
-        <el-button size="small" plain @click="$emit('close')">取消</el-button>
+    <div v-else-if="loginMode !== 'error'" class="qr-card">
+      <div class="qr-head">
+        <strong>扫码登录</strong>
+        <span>{{ qrStateLabel }}</span>
+      </div>
+
+      <div class="qr-body">
+        <el-image v-if="qrImage" :src="qrImage" class="qr-image" fit="contain" />
+        <p class="qr-tip">使用 Bilibili App 扫描二维码，并在手机上确认登录。</p>
+        <div class="qr-actions">
+          <el-button plain @click="emit('close')">关闭</el-button>
+          <el-button @click="startLogin">{{ isExpired ? '刷新二维码' : '重新获取' }}</el-button>
+        </div>
       </div>
     </div>
 
-    <div v-else-if="status === 'success'" class="bili-state">
-      <p class="bili-state-label success">登录成功</p>
-      <p class="bili-state-desc">{{ nickname ? `已登录为 ${nickname}` : 'B站账号已绑定' }}</p>
-      <el-button size="small" @click="$emit('close')">完成</el-button>
-    </div>
-
-    <div v-else-if="status === 'expired'" class="bili-state">
-      <p class="bili-state-label warn">二维码已过期</p>
-      <el-button size="small" type="primary" @click="startLogin">重新获取</el-button>
-    </div>
-
-    <div v-else-if="status === 'error'" class="bili-state">
-      <p class="bili-state-label error">获取失败</p>
-      <p class="bili-state-desc">{{ errorMsg }}</p>
-      <el-button size="small" @click="startLogin">重试</el-button>
+    <div v-else class="error-card">
+      <span>{{ errorMsg }}</span>
+      <el-button size="small" type="primary" @click="startLogin">重试</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import QRCode from 'qrcode'
+import type { BiliLoginState } from '../../../shared/types'
 
 const emit = defineEmits<{
   close: []
   loggedIn: []
 }>()
 
-type LoginStatus = 'idle' | 'refreshing' | 'loading' | 'scanned' | 'success' | 'expired' | 'error'
+type LoginMode = 'checking' | 'refreshing' | 'qr' | 'scanned' | 'success' | 'expired' | 'error'
 
-const status = ref<LoginStatus>('idle')
-const qrUrl = ref('')
+const loginMode = ref<LoginMode>('checking')
+const accountState = ref<BiliLoginState>({ loggedIn: false, expired: true })
+const qrImage = ref('')
 const qrcodeKey = ref('')
-const nickname = ref('')
 const errorMsg = ref('')
+const tick = ref(Date.now())
 let pollTimer: ReturnType<typeof setInterval> | null = null
+let tickTimer: ReturnType<typeof setInterval> | null = null
+
+const isLoggedIn = computed(() => accountState.value.loggedIn)
+const isExpired = computed(() => accountState.value.expired)
+const accountName = computed(() => accountState.value.nickname || 'B 站账号')
+const expiresAtLabel = computed(() => formatExpiresAt(accountState.value.expiresAt))
+const expiresInLabel = computed(() => formatRemaining(accountState.value.expiresAt, tick.value))
+const qrStateLabel = computed(() => {
+  if (loginMode.value === 'checking') return '检查中'
+  if (loginMode.value === 'refreshing') return '生成中'
+  if (loginMode.value === 'qr') return '待扫描'
+  if (loginMode.value === 'scanned') return '待确认'
+  if (loginMode.value === 'success') return '已完成'
+  if (loginMode.value === 'expired') return '已过期'
+  return '进行中'
+})
+
+async function refreshState() {
+  try {
+    accountState.value = await window.api.getBiliState()
+  } catch {
+    accountState.value = { loggedIn: false, expired: true }
+  }
+}
 
 async function startLogin() {
   stopPoll()
-  status.value = 'refreshing'
+  qrImage.value = ''
+  errorMsg.value = ''
+  loginMode.value = 'refreshing'
+
   try {
     const result = await window.api.generateBiliQr()
     qrcodeKey.value = result.qrcode_key
-    qrUrl.value = result.qrUrl
-    status.value = 'loading'
+    qrImage.value = await QRCode.toDataURL(result.qrUrl, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 220
+    })
+    loginMode.value = 'qr'
     startPoll()
   } catch (err) {
-    status.value = 'error'
+    loginMode.value = 'error'
     errorMsg.value = err instanceof Error ? err.message : '无法生成二维码'
   }
 }
@@ -81,19 +110,28 @@ function startPoll() {
       const result = await window.api.pollBiliLogin(qrcodeKey.value)
       if (result.status === 'confirmed') {
         stopPoll()
-        status.value = 'success'
-        nickname.value = result.nickname || ''
+        loginMode.value = 'success'
+        await refreshState()
         emit('loggedIn')
       } else if (result.status === 'scanned') {
-        status.value = 'scanned'
+        loginMode.value = 'scanned'
       } else if (result.status === 'expired') {
         stopPoll()
-        status.value = 'expired'
+        loginMode.value = 'expired'
       }
     } catch {
       // keep polling
     }
   }, 2000)
+}
+
+async function handleLogout() {
+  stopPoll()
+  await window.api.clearBiliCookies()
+  accountState.value = { loggedIn: false, expired: true }
+  loginMode.value = 'checking'
+  qrImage.value = ''
+  qrcodeKey.value = ''
 }
 
 function stopPoll() {
@@ -103,59 +141,171 @@ function stopPoll() {
   }
 }
 
-defineExpose({ startLogin })
+function formatExpiresAt(expiresAt?: string): string {
+  if (!expiresAt) return '未知'
+  const date = new Date(expiresAt)
+  if (Number.isNaN(date.getTime())) return '未知'
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function formatRemaining(expiresAt?: string, nowMs = Date.now()): string {
+  if (!expiresAt) return '未知'
+  const target = new Date(expiresAt).getTime()
+  if (!Number.isFinite(target)) return '未知'
+  const diff = target - nowMs
+  if (diff <= 0) return '已失效'
+
+  const hours = Math.floor(diff / 3600000)
+  const minutes = Math.floor((diff % 3600000) / 60000)
+
+  if (hours >= 24) return `${Math.floor(hours / 24)} 天`
+  if (hours > 0) return `${hours} 小时 ${minutes} 分钟`
+  if (minutes > 0) return `${minutes} 分钟`
+  return '小于 1 分钟'
+}
+
+onMounted(async () => {
+  await refreshState()
+  tickTimer = setInterval(() => {
+    tick.value = Date.now()
+  }, 60_000)
+
+  if (!accountState.value.loggedIn || accountState.value.expired) {
+    await startLogin()
+  } else {
+    loginMode.value = 'checking'
+  }
+})
+
+onBeforeUnmount(() => {
+  stopPoll()
+  if (tickTimer) {
+    clearInterval(tickTimer)
+    tickTimer = null
+  }
+})
+
+defineExpose({ startLogin, handleLogout })
 </script>
 
 <style scoped>
 .bili-login-dialog {
-  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.bili-state {
-  text-align: center;
-  padding: 20px 0;
+.state-card,
+.qr-card,
+.error-card {
+  border: 1px solid var(--vb-border);
+  border-radius: var(--vb-radius);
+  background: var(--vb-bg-surface);
+  padding: 14px;
 }
 
-.bili-state-label {
-  font-size: 16px;
-  font-weight: 600;
+.state-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.state-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.state-main strong,
+.qr-head strong {
+  font-size: 15px;
   color: var(--vb-text);
-  margin: 0 0 8px;
 }
-.bili-state-label.success { color: var(--vb-success); }
-.bili-state-label.warn { color: var(--vb-warning); }
-.bili-state-label.error { color: var(--vb-danger); }
 
-.bili-state-desc {
-  font-size: 13px;
+.state-main span,
+.state-meta,
+.qr-side p,
+.error-card span {
   color: var(--vb-text-secondary);
-  margin: 0 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.bili-qr-wrap {
+.state-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.state-actions,
+.qr-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.qr-head span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--vb-accent-bg);
+  color: var(--vb-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.qr-body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 8px 0;
+  gap: 12px;
 }
 
-.bili-hint {
-  font-size: 14px;
-  color: var(--vb-text-secondary);
-  margin: 0;
-}
-.bili-hint.success { color: var(--vb-success); }
-
-.bili-qr-img {
-  width: 180px;
-  height: 180px;
+.qr-image {
+  width: 220px;
+  height: 220px;
   border: 1px solid var(--vb-border);
-  border-radius: 10px;
+  border-radius: 14px;
+  background: #fff;
 }
 
-.bili-actions {
+.qr-tip {
+  margin: 0;
+  color: var(--vb-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.error-card {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .qr-image {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .error-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

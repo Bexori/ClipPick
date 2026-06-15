@@ -1,5 +1,5 @@
 appId: com.videobox.app
-productName: 影盒
+productName: ClipPick
 directories:
   output: dist-electron
 files:
@@ -9,8 +9,10 @@ extraResources:
   - from: resources/
     to: resources/
     filter:
+      - "**/icon.ico"
       - "**/*.exe"
 win:
+  icon: resources/icon.ico
   target:
     - target: nsis
       arch:
@@ -20,6 +22,6 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
-  shortcutName: 影盒
+  shortcutName: ClipPick
 asarUnpack:
   - "resources/**"

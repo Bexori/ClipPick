@@ -2,10 +2,11 @@
   <div class="history-page">
     <div class="history-top">
       <div class="history-top-left">
-        <h2 class="history-heading"><span class="heading-accent" />下载历史</h2>
-        <p class="history-sub">
-          <span class="count-badge">{{ historyStore.entries.length }}</span> 条记录
-        </p>
+        <h2 class="history-heading">
+          下载历史
+          <span class="count-badge">{{ historyStore.entries.length }}</span>
+        </h2>
+        <p class="history-sub">当前保存的下载记录</p>
       </div>
       <el-button
         type="danger"
@@ -214,49 +215,40 @@ async function handleClear() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex-shrink: 0;
   background: var(--vb-bg-surface);
   border: 1px solid var(--vb-border);
-  border-radius: var(--vb-radius);
-  padding: 18px 22px;
+  border-radius: 16px;
+  padding: 14px 18px;
 }
 
 .history-top-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .history-heading {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--vb-text);
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.heading-accent {
-  display: inline-block;
-  width: 4px;
-  height: 20px;
-  border-radius: 2px;
-  background: var(--vb-accent);
-  flex-shrink: 0;
+  gap: 8px;
 }
 
 .history-sub {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--vb-text-tertiary);
   margin: 0;
-  padding-left: 14px;
+  padding-left: 0;
 }
 
 .count-badge {
   display: inline-block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--vb-accent);
   background: var(--vb-accent-bg);
@@ -271,7 +263,7 @@ async function handleClear() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
+  padding: 10px 0;
   flex-shrink: 0;
   margin-top: auto;
 }

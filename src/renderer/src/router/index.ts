@@ -14,6 +14,11 @@ const router = createRouter({
       component: () => import('../views/History.vue')
     },
     {
+      path: '/saved-urls',
+      name: 'SavedUrls',
+      component: () => import('../views/SavedUrls.vue')
+    },
+    {
       path: '/settings',
       name: 'Settings',
       component: () => import('../views/Settings.vue')

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <el-dialog v-model="visible" title="设置" width="680px" top="5vh" class="settings-dialog" destroy-on-close>
     <div class="sd-tabs">
       <button
@@ -139,7 +139,7 @@
 
     <template #footer>
       <div class="dialog-footer">
-        <span class="dialog-version">影盒 v{{ version }}</span>
+        <span class="dialog-version">ClipPick v{{ version }}</span>
         <div class="dialog-actions">
           <el-button @click="visible = false">取消</el-button>
           <el-button type="primary" :loading="saving" @click="save">保存设置</el-button>

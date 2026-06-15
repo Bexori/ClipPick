@@ -39,21 +39,51 @@ export class SavedUrlsService {
 
   add(entry: { url: string; title: string; thumbnail: string; uploader: string }): SavedUrlEntry {
     const entries = this.read()
+    const normalizedUrl = entry.url.trim()
     const saved: SavedUrlEntry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      url: entry.url,
+      url: normalizedUrl,
       title: entry.title,
       thumbnail: entry.thumbnail,
       uploader: entry.uploader,
       savedAt: new Date().toISOString()
     }
-    entries.unshift(saved)
+
+    const existingIndex = entries.findIndex(item => item.url === normalizedUrl)
+    if (existingIndex >= 0) {
+      const existing = entries[existingIndex]
+      entries.splice(existingIndex, 1)
+      entries.unshift({
+        ...existing,
+        ...saved,
+        id: existing.id
+      })
+    } else {
+      entries.unshift(saved)
+    }
+
     this.write(entries)
-    return saved
+    return entries[0]
   }
 
-  delete(id: string): void {
-    const entries = this.read().filter(e => e.id !== id)
-    this.write(entries)
+  delete(id: string): boolean {
+    const entries = this.read()
+    const next = entries.filter(entry => entry.id !== id)
+    const changed = next.length !== entries.length
+    if (changed) this.write(next)
+    return changed
+  }
+
+  deleteByUrl(url: string): boolean {
+    const normalizedUrl = url.trim()
+    const entries = this.read()
+    const next = entries.filter(entry => entry.url !== normalizedUrl)
+    const changed = next.length !== entries.length
+    if (changed) this.write(next)
+    return changed
+  }
+
+  hasUrl(url: string): boolean {
+    return this.read().some(entry => entry.url === url.trim())
   }
 }

@@ -39,8 +39,7 @@
             size="large"
             class="save-btn"
             :class="{ saved: isUrlSaved }"
-            :disabled="isUrlSaved"
-            @click="handleSaveUrl"
+            @click="toggleSavedUrl"
           >
             <el-icon :size="18"><StarFilled v-if="isUrlSaved" /><Star v-else /></el-icon>
           </el-button>
@@ -91,8 +90,7 @@
               size="small"
               text
               circle
-              :disabled="isPlaylistSaved"
-              @click="savePlaylist"
+              @click="togglePlaylistSaved"
             >
               <el-icon :size="16"><StarFilled v-if="isPlaylistSaved" /><Star v-else /></el-icon>
             </el-button>
@@ -186,6 +184,17 @@
         <div class="action-card">
           <label class="field-label">选择格式</label>
           <FormatSelector v-model="entrySelectedFormat" :formats="entryVideoInfo.formats" />
+          <SubtitleOptions
+            v-if="entryVideoInfo.subtitles.length > 0"
+            title="下载字幕"
+            hint="优先选择字幕类型和语言，支持嵌入视频。"
+            :subtitles="entryVideoInfo.subtitles"
+            v-model:enabled="entryEnableSubs"
+            v-model:write-subs="entryWriteSubs"
+            v-model:write-auto-subs="entryWriteAutoSubs"
+            v-model:embed-subs="entryEmbedSubs"
+            v-model:selected-langs="entrySelectedSubLangs"
+          />
 
           <div v-if="entryVideoInfo.subtitles.length > 0" class="subs-section">
             <el-checkbox v-model="entryEnableSubs" class="subs-toggle">
@@ -250,6 +259,17 @@
       <div class="action-card">
         <label class="field-label">选择格式</label>
         <FormatSelector v-model="selectedFormat" :formats="videoInfo.formats" />
+        <SubtitleOptions
+          v-if="videoInfo.subtitles.length > 0"
+          title="下载字幕"
+          hint="优先选择字幕类型和语言，支持嵌入视频。"
+          :subtitles="videoInfo.subtitles"
+          v-model:enabled="enableSubs"
+          v-model:write-subs="writeSubs"
+          v-model:write-auto-subs="writeAutoSubs"
+          v-model:embed-subs="embedSubs"
+          v-model:selected-langs="selectedSubLangs"
+        />
 
         <div v-if="videoInfo.subtitles.length > 0" class="subs-section">
           <el-checkbox v-model="enableSubs" class="subs-toggle">
@@ -307,6 +327,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Close, CopyDocument, Download, Link, List, Star, StarFilled, VideoCamera, WarningFilled } from '@element-plus/icons-vue'
 import VideoInfo from '../components/VideoInfo.vue'
 import FormatSelector from '../components/FormatSelector.vue'
+import SubtitleOptions from '../components/SubtitleOptions.vue'
 import DownloadList from '../components/DownloadList.vue'
 import { useDownloadStore } from '../stores/download.store'
 import { useSettingsStore } from '../stores/settings.store'
@@ -343,6 +364,7 @@ const entryWriteSubs = ref(true)
 const entryWriteAutoSubs = ref(true)
 const entrySelectedSubLangs = ref<string[]>([])
 const entryEmbedSubs = ref(false)
+const biliExpiryWarningToken = ref('')
 
 const videoInfo = computed(() => downloadStore.videoInfo)
 const visibleTasks = computed(() => downloadStore.tasks)
@@ -425,8 +447,14 @@ async function handleParse() {
   if (isBilibiliUrl(url.value.trim())) {
     try {
       const state = await window.api.getBiliState()
-      if (state.expired) {
-        ElMessage.warning('B站 Cookie 已过期，可能无法获取高清画质。请前往设置 → B站 重新登录。')
+      if (state.loggedIn && state.expired) {
+        const warningToken = state.expiresAt || 'expired-no-expiry'
+        if (biliExpiryWarningToken.value !== warningToken) {
+          biliExpiryWarningToken.value = warningToken
+          ElMessage.warning('B站 Cookie 已过期，可能无法获取高清画质。请前往设置 → B站 重新登录。')
+        }
+      } else {
+        biliExpiryWarningToken.value = ''
       }
     } catch { /* best-effort check */ }
   }
@@ -477,6 +505,10 @@ async function loadPlaylist() {
 
   loadingPlaylist.value = true
   error.value = ''
+  playlistResult.value = null
+  selectedEntry.value = null
+  entryVideoInfo.value = null
+  entrySelectedFormat.value = ''
 
   try {
     playlistResult.value = await window.api.parsePlaylist(currentUrl)
@@ -525,6 +557,21 @@ async function savePlaylist() {
     uploader: playlistResult.value?.uploader || ''
   })
   ElMessage.success('列表已保存')
+}
+
+async function togglePlaylistSaved() {
+  const currentUrl = url.value.trim()
+  if (!currentUrl) return
+
+  if (isPlaylistSaved.value) {
+    const removed = await savedUrlsStore.removeByUrl(currentUrl)
+    if (removed) {
+      ElMessage.success('已取消收藏')
+    }
+    return
+  }
+
+  await savePlaylist()
 }
 
 async function selectEntry(entry: PlaylistEntry) {
@@ -653,6 +700,21 @@ async function handleDownload() {
   })
 
   ElMessage.success('已添加到下载队列')
+}
+
+async function toggleSavedUrl() {
+  const currentUrl = (videoInfo.value?.webpageUrl || url.value.trim()).trim()
+  if (!currentUrl) return
+
+  if (isUrlSaved.value) {
+    const removed = await savedUrlsStore.removeByUrl(currentUrl)
+    if (removed) {
+      ElMessage.success('已取消收藏')
+    }
+    return
+  }
+
+  await handleSaveUrl()
 }
 
 async function handleSaveUrl() {
@@ -989,45 +1051,7 @@ async function handleSaveUrl() {
 
 /* ===== Subtitle options ===== */
 .subs-section {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--vb-border);
-}
-
-.subs-toggle {
-  margin-bottom: 0;
-}
-
-.subs-options {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.subs-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.subs-lang-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.subs-lang-label {
-  font-size: 12px;
-  color: var(--vb-text-tertiary);
-  flex-shrink: 0;
-}
-
-.subs-lang-select {
-  min-width: 160px;
-  max-width: 320px;
-  flex: 1;
+  display: none;
 }
 
 .download-btn {

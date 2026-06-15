@@ -27,6 +27,7 @@ interface VideoBoxApi {
   getSavedUrls(): Promise<import('../../shared/types').SavedUrlEntry[]>
   addSavedUrl(entry: { url: string; title: string; thumbnail: string; uploader: string }): Promise<import('../../shared/types').SavedUrlEntry>
   deleteSavedUrl(id: string): Promise<void>
+  deleteSavedUrlByUrl(url: string): Promise<boolean>
   generateBiliQr(): Promise<import('../../shared/types').BiliQrResult>
   pollBiliLogin(qrcode_key: string): Promise<import('../../shared/types').BiliPollResult>
   getBiliState(): Promise<import('../../shared/types').BiliLoginState>

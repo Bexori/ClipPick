@@ -21,14 +21,14 @@ defineProps<{
 .setting-row {
   display: grid;
   grid-template-columns: minmax(220px, 300px) 1fr;
-  gap: 24px;
+  gap: 18px;
   align-items: center;
-  padding: 18px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--vb-border-light);
 }
 
-.setting-row:last-child {
-  border-bottom: 0;
+.setting-row:hover {
+  border-bottom-color: rgba(99, 102, 241, 0.2);
 }
 
 .setting-copy {
@@ -56,6 +56,7 @@ defineProps<{
   .setting-row {
     grid-template-columns: 1fr;
     gap: 10px;
+    padding: 12px 0;
   }
 }
 </style>

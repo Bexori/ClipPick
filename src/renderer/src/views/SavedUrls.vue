@@ -55,7 +55,7 @@
             <div class="action-btns">
               <el-button size="small" type="primary" @click="handleOpen(row)">解析</el-button>
               <el-button size="small" plain @click="handleCopy(row)">复制</el-button>
-              <el-button size="small" plain type="danger" @click="handleDelete(row.id)">删除</el-button>
+              <el-button size="small" plain type="danger" @click="handleDelete(row.id)">取消收藏</el-button>
             </div>
           </template>
         </el-table-column>
@@ -115,9 +115,17 @@ async function handleCopy(entry: SavedUrlEntry) {
 
 async function handleDelete(id: string) {
   try {
-    await ElMessageBox.confirm('确定删除该链接？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm('确定取消收藏该链接？', '提示', {
+      type: 'warning',
+      confirmButtonText: '取消收藏',
+      cancelButtonText: '取消'
+    })
     await savedUrlsStore.deleteEntry(id)
-    ElMessage.success('已删除')
+    const maxPage = Math.max(1, Math.ceil(savedUrlsStore.entries.length / pageSize.value))
+    if (currentPage.value > maxPage) {
+      currentPage.value = maxPage
+    }
+    ElMessage.success('已取消收藏')
   } catch { /* cancelled */ }
 }
 
