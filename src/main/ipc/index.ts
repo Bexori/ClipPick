@@ -1,8 +1,8 @@
-import { ipcMain, dialog, shell, BrowserWindow, app } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow, app, net, session } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { IpcChannels } from '../../shared/types'
-import type { StartDownloadRequest, HistoryEntry, ProgressPayload, CompletePayload, ErrorPayload, TranslateRequest, TranslateResult, VersionCheckResult } from '../../shared/types'
+import type { StartDownloadRequest, HistoryEntry, ProgressPayload, CompletePayload, ErrorPayload, TranslateRequest, TranslateResult, VersionCheckResult, ProxyTestResult, TranslateTestRequest, TranslateTestResult } from '../../shared/types'
 import { YtDlpService } from '../services/yt-dlp.service'
 import { DownloadManager } from '../services/download-manager'
 import { FfmpegService } from '../services/ffmpeg.service'
@@ -143,6 +143,17 @@ export function registerIpcHandlers(
   ipcMain.handle(IpcChannels.DIALOG_SELECT_PATH, async () => {
     const result = await dialog.showOpenDialog(win, {
       properties: ['openDirectory']
+    })
+    return result.canceled ? null : result.filePaths[0]
+  })
+
+  ipcMain.handle(IpcChannels.DIALOG_SELECT_FILE, async () => {
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openFile'],
+      filters: [
+        { name: 'Text Files', extensions: ['txt'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
     })
     return result.canceled ? null : result.filePaths[0]
   })
@@ -292,6 +303,75 @@ export function registerIpcHandlers(
     return updated
   })
 
+  ipcMain.handle(IpcChannels.SETTINGS_TEST_PROXY, async (_event, { proxy }: { proxy: string }): Promise<ProxyTestResult> => {
+    const targetUrl = 'https://example.com/'
+    const trimmed = proxy.trim()
+    const testSession = session.fromPartition(`proxy-test-${Date.now()}`)
+
+    try {
+      if (trimmed) {
+        await testSession.setProxy({
+          proxyRules: trimmed,
+          proxyBypassRules: '<local>'
+        })
+      }
+
+      const startedAt = Date.now()
+      const status = await new Promise<{ ok: boolean; statusCode?: number; error?: Error }>((resolve) => {
+        const request = net.request({ url: targetUrl, session: testSession })
+        request.setHeader('User-Agent', 'ClipPick/1.0')
+
+        const timeout = setTimeout(() => {
+          request.abort()
+          resolve({ ok: false, error: new Error('连接超时') })
+        }, 8000)
+
+        request.on('response', response => {
+          response.on('data', () => {})
+          response.on('end', () => {
+            clearTimeout(timeout)
+            resolve({
+              ok: response.statusCode >= 200 && response.statusCode < 400,
+              statusCode: response.statusCode
+            })
+          })
+        })
+
+        request.on('error', error => {
+          clearTimeout(timeout)
+          resolve({ ok: false, error })
+        })
+
+        request.end()
+      })
+
+      if (status.ok) {
+        return {
+          ok: true,
+          message: '连接成功',
+          latencyMs: Date.now() - startedAt
+        }
+      }
+
+      if (status.error) {
+        return {
+          ok: false,
+          message: errorMessage(status.error, '连接失败')
+        }
+      }
+
+      return {
+        ok: false,
+        message: `请求失败 (${status.statusCode ?? '未知'})`
+      }
+    } catch (err: unknown) {
+      return {
+        ok: false,
+        message: errorMessage(err, '连接失败')
+      }
+    }
+  })
+
   // ========== App ==========
   ipcMain.handle(IpcChannels.APP_GET_VERSION, () => {
     return app.getVersion()
@@ -342,6 +422,48 @@ export function registerIpcHandlers(
   ipcMain.handle(IpcChannels.TRANSLATE_SET_KEY, (_event, { profileId, key }: { profileId: string; key: string }) => {
     settings.setApiKey(profileId, key)
     return settings.get()
+  })
+
+  ipcMain.handle(IpcChannels.TRANSLATE_TEST, async (_event, req: TranslateTestRequest): Promise<TranslateTestResult> => {
+    const endpoint = req.endpoint.trim() || 'https://api.deepseek.com/v1'
+    const model = req.model.trim() || 'deepseek-chat'
+    const apiKey = req.apiKey.trim()
+    if (!apiKey) return { ok: false, message: 'API Key 不能为空' }
+
+    const url = `${endpoint.replace(/\/$/, '')}/chat/completions`
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 12_000)
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: 'ping' }],
+          temperature: 0
+        }),
+        signal: controller.signal
+      })
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        if (res.status === 401) return { ok: false, message: 'API Key 无效' }
+        return { ok: false, message: `请求失败 (${res.status}): ${body.slice(0, 120)}` }
+      }
+
+      return { ok: true, message: '连接成功' }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return { ok: false, message: '请求超时，请检查网络或代理' }
+      }
+      return { ok: false, message: errorMessage(err, '连接失败') }
+    } finally {
+      clearTimeout(timer)
+    }
   })
 
   ipcMain.handle(IpcChannels.TRANSLATE, async (_event, { text, profileId }: TranslateRequest): Promise<TranslateResult> => {

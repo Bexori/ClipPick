@@ -11,9 +11,20 @@ const fallbackSettings: AppSettings = {
   biliCookieHours: 168,
   proxy: '',
   downloadNotifications: true,
+  notificationMode: 'system',
   autoRetryCount: 1,
+  appLanguage: 'system',
+  themeMode: 'system',
+  density: 'standard',
+  accentColor: '#6c5ce7',
   translateProfiles: [],
   activeProfileId: ''
+}
+
+function sanitizeCookieBrowser(value: unknown): CookieBrowser {
+  return ['edge', 'chrome', 'firefox', 'custom'].includes(String(value))
+    ? (String(value) as CookieBrowser)
+    : fallbackSettings.cookieBrowser
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -25,7 +36,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const biliCookieHours = ref(fallbackSettings.biliCookieHours)
   const proxy = ref(fallbackSettings.proxy)
   const downloadNotifications = ref(fallbackSettings.downloadNotifications)
+  const notificationMode = ref(fallbackSettings.notificationMode)
   const autoRetryCount = ref(fallbackSettings.autoRetryCount)
+  const appLanguage = ref(fallbackSettings.appLanguage)
+  const themeMode = ref(fallbackSettings.themeMode)
+  const density = ref(fallbackSettings.density)
+  const accentColor = ref(fallbackSettings.accentColor)
   const translateProfiles = ref<TranslateProfile[]>(fallbackSettings.translateProfiles)
   const activeProfileId = ref(fallbackSettings.activeProfileId)
   const loaded = ref(false)
@@ -39,7 +55,12 @@ export const useSettingsStore = defineStore('settings', () => {
     biliCookieHours: biliCookieHours.value,
     proxy: proxy.value,
     downloadNotifications: downloadNotifications.value,
+    notificationMode: notificationMode.value,
     autoRetryCount: autoRetryCount.value,
+    appLanguage: appLanguage.value,
+    themeMode: themeMode.value,
+    density: density.value,
+    accentColor: accentColor.value,
     translateProfiles: translateProfiles.value,
     activeProfileId: activeProfileId.value
   }))
@@ -57,6 +78,7 @@ export const useSettingsStore = defineStore('settings', () => {
   async function saveSettings(patch: Partial<AppSettings> = settings.value) {
     const updated = await window.api.updateSettings(patch)
     applySettings(updated)
+    return updated
   }
 
   async function setApiKey(profileId: string, key: string) {
@@ -68,12 +90,17 @@ export const useSettingsStore = defineStore('settings', () => {
     defaultSavePath.value = next.defaultSavePath ?? fallbackSettings.defaultSavePath
     concurrentDownloads.value = next.concurrentDownloads ?? fallbackSettings.concurrentDownloads
     cookieMode.value = next.cookieMode ?? fallbackSettings.cookieMode
-    cookieBrowser.value = next.cookieBrowser ?? fallbackSettings.cookieBrowser
+    cookieBrowser.value = sanitizeCookieBrowser(next.cookieBrowser)
     cookiesFile.value = next.cookiesFile ?? fallbackSettings.cookiesFile
     biliCookieHours.value = next.biliCookieHours ?? fallbackSettings.biliCookieHours
     proxy.value = next.proxy ?? fallbackSettings.proxy
     downloadNotifications.value = next.downloadNotifications ?? fallbackSettings.downloadNotifications
+    notificationMode.value = next.notificationMode ?? fallbackSettings.notificationMode
     autoRetryCount.value = next.autoRetryCount ?? fallbackSettings.autoRetryCount
+    appLanguage.value = next.appLanguage ?? fallbackSettings.appLanguage
+    themeMode.value = next.themeMode ?? fallbackSettings.themeMode
+    density.value = next.density ?? fallbackSettings.density
+    accentColor.value = next.accentColor ?? fallbackSettings.accentColor
     translateProfiles.value = next.translateProfiles ?? fallbackSettings.translateProfiles
     activeProfileId.value = next.activeProfileId ?? fallbackSettings.activeProfileId
   }
@@ -97,7 +124,12 @@ export const useSettingsStore = defineStore('settings', () => {
     biliCookieHours,
     proxy,
     downloadNotifications,
+    notificationMode,
     autoRetryCount,
+    appLanguage,
+    themeMode,
+    density,
+    accentColor,
     translateProfiles,
     activeProfileId,
     loaded,

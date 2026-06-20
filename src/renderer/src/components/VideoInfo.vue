@@ -38,7 +38,7 @@
               class="desc-toggle"
               @click="descriptionExpanded = !descriptionExpanded"
             >
-              {{ descriptionExpanded ? '收起' : '展开' }}
+              {{ descriptionExpanded ? '收起简介' : '展开简介' }}
             </button>
             <button
               type="button"
@@ -55,19 +55,37 @@
 
     <div v-if="descriptionExpanded && info.description" class="vi-desc-full">
       <div class="full-desc-head">
-        <span>{{ translatedText ? '翻译结果' : '完整简介' }}</span>
-        <button v-if="translatedText" type="button" class="source-toggle" @click="showTranslated = !showTranslated">
-          {{ showTranslated ? '查看原文' : '查看翻译' }}
+        <span>完整简介</span>
+      </div>
+      <p class="full-desc-text">{{ info.description }}</p>
+    </div>
+
+    <div v-if="translatedText" class="vi-translation-full">
+      <div class="full-desc-head">
+        <span>翻译结果</span>
+      </div>
+      <p v-if="translationExpanded" class="full-desc-text">
+        {{ translatedText }}
+      </p>
+      <p v-else class="full-desc-text translation-preview">
+        {{ translationPreview }}
+      </p>
+      <div class="translation-actions">
+        <button
+          type="button"
+          class="translation-collapse-toggle"
+          @click="translationExpanded = !translationExpanded"
+        >
+          {{ translationExpanded ? '收起翻译' : '展开翻译' }}
         </button>
       </div>
-      <p class="full-desc-text">{{ showTranslated && translatedText ? translatedText : info.description }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { ElMessage } from 'element-plus'
+import { ElMessage } from "element-plus";
 import { Film, User, VideoCamera } from "@element-plus/icons-vue";
 import type { VideoParseResult } from "../../../shared/types";
 import { useSettingsStore } from "../stores/settings.store";
@@ -76,16 +94,23 @@ const props = defineProps<{
   info: VideoParseResult;
 }>();
 
-const settingsStore = useSettingsStore()
+const settingsStore = useSettingsStore();
 const descriptionLimit = 120;
 const descriptionExpanded = ref(false);
-const translating = ref(false)
-const translatedText = ref('')
-const showTranslated = ref(true)
+const translationExpanded = ref(true);
+const translating = ref(false);
+const translatedText = ref("");
 
 const normalizedDescription = computed(() =>
   normalizeDescription(props.info.description || ""),
 );
+
+const translationPreview = computed(() => {
+  const text = normalizeDescription(translatedText.value);
+  if (!text) return "";
+  if (text.length <= 140) return text;
+  return `${text.slice(0, 140).trimEnd()}...`;
+});
 
 const descriptionPreview = computed(() => {
   const text = normalizedDescription.value;
@@ -97,8 +122,8 @@ watch(
   () => [props.info.title, props.info.description],
   () => {
     descriptionExpanded.value = false;
-    translatedText.value = ''
-    showTranslated.value = true
+    translationExpanded.value = true;
+    translatedText.value = "";
   },
 );
 
@@ -112,28 +137,27 @@ function normalizeDescription(text: string): string {
 }
 
 async function handleTranslate() {
-  if (!props.info.description) return
+  if (!props.info.description) return;
 
-  translating.value = true
+  translating.value = true;
   try {
     if (!settingsStore.loaded) {
-      await settingsStore.loadFromLocal()
+      await settingsStore.loadFromLocal();
     }
 
     const result = await window.api.translateText({
       text: props.info.description,
-      profileId: settingsStore.activeProfileId || settingsStore.translateProfiles[0]?.id
-    })
+      profileId: settingsStore.activeProfileId || settingsStore.translateProfiles[0]?.id,
+    });
 
-    translatedText.value = result.translatedText
-    showTranslated.value = true
-    descriptionExpanded.value = true
+    translatedText.value = result.translatedText;
+    translationExpanded.value = true;
   } catch (err) {
-    translatedText.value = ''
-    const message = err instanceof Error ? err.message : '翻译失败'
-    ElMessage.warning(message)
+    translatedText.value = "";
+    const message = err instanceof Error ? err.message : "翻译失败";
+    ElMessage.warning(message);
   } finally {
-    translating.value = false
+    translating.value = false;
   }
 }
 
@@ -162,10 +186,10 @@ function formatDuration(seconds: number): string {
 
 .video-info-main {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 18px;
   min-width: 0;
-  height: 135px;
+  min-height: 135px;
 }
 
 .vi-thumb {
@@ -213,8 +237,7 @@ function formatDuration(seconds: number): string {
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .vi-title {
@@ -258,7 +281,7 @@ function formatDuration(seconds: number): string {
   gap: 6px;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .desc-actions {
@@ -284,67 +307,49 @@ function formatDuration(seconds: number): string {
 .desc-toggle {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border: 1px solid rgba(99, 102, 241, 0.18);
-  border-radius: 999px;
-  background: rgba(99, 102, 241, 0.06);
+  justify-content: flex-start;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--vb-accent);
   font-size: 12px;
   cursor: pointer;
   line-height: 1;
-  transition: background var(--vb-transition), border-color var(--vb-transition), color var(--vb-transition);
+  transition: color var(--vb-transition), opacity var(--vb-transition);
 }
 
 .desc-toggle:hover {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.26);
+  opacity: 0.82;
+  text-decoration: underline;
 }
 
 .translate-toggle {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border: 1px solid var(--vb-border-light);
-  border-radius: 999px;
-  background: var(--vb-bg-surface);
+  justify-content: flex-start;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--vb-text-secondary);
   font-size: 12px;
   cursor: pointer;
   line-height: 1;
-  transition: border-color var(--vb-transition), background var(--vb-transition), color var(--vb-transition);
+  transition: color var(--vb-transition), opacity var(--vb-transition);
 }
 
 .translate-toggle:hover:not(:disabled) {
-  border-color: rgba(99, 102, 241, 0.26);
-  background: rgba(99, 102, 241, 0.06);
   color: var(--vb-accent);
+  opacity: 0.82;
+  text-decoration: underline;
 }
 
 .translate-toggle:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.source-toggle {
-  align-self: flex-start;
-  padding: 0 10px;
-  border: 1px solid var(--vb-border-light);
-  border-radius: 999px;
-  background: var(--vb-bg-surface);
-  color: var(--vb-text-tertiary);
-  font-size: 12px;
-  cursor: pointer;
-  line-height: 1;
-  min-height: 28px;
-}
-
-.source-toggle:hover {
-  border-color: rgba(99, 102, 241, 0.26);
-  color: var(--vb-accent);
 }
 
 .vi-desc-full {
@@ -355,6 +360,38 @@ function formatDuration(seconds: number): string {
   gap: 8px;
 }
 
+.vi-translation-full {
+  padding-top: 12px;
+  border-top: 1px solid var(--vb-border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.translation-collapse-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--vb-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.translation-collapse-toggle:hover {
+  opacity: 0.82;
+  text-decoration: underline;
+}
+
+.translation-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
 .full-desc-text {
   margin: 0;
   font-size: 12px;
@@ -362,6 +399,10 @@ function formatDuration(seconds: number): string {
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.translation-preview {
+  color: var(--vb-text-tertiary);
 }
 
 @media (max-width: 720px) {

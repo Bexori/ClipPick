@@ -1,12 +1,15 @@
 <template>
   <div class="saved-urls-page">
     <div class="saved-top">
-      <div class="saved-top-left">
-        <h2 class="saved-heading"><span class="heading-accent" />收藏</h2>
-        <p class="saved-sub">
-          <span class="count-badge">{{ savedUrlsStore.entries.length }}</span> 条记录
-        </p>
-      </div>
+      <h2 class="saved-heading">收藏</h2>
+      <el-button
+        type="danger"
+        plain
+        :disabled="savedUrlsStore.entries.length === 0"
+        @click="handleClearAll"
+      >
+        清空全部
+      </el-button>
     </div>
 
     <div class="saved-table-wrap">
@@ -14,6 +17,7 @@
         :data="pagedEntries"
         v-loading="savedUrlsStore.loading"
         stripe
+        :show-header="false"
         empty-text="暂无已保存的链接"
         row-key="id"
         size="default"
@@ -30,27 +34,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip header-align="center" />
+        <el-table-column prop="title" label="标题" min-width="260" show-overflow-tooltip header-align="center" />
 
-        <el-table-column label="上传者" width="120" header-align="center">
-          <template #default="{ row }">
-            <span class="meta-text">{{ row.uploader || '--' }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="链接" min-width="180" show-overflow-tooltip header-align="center">
-          <template #default="{ row }">
-            <span class="url-text">{{ row.url }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="保存时间" width="160" header-align="center">
-          <template #default="{ row }">
-            <span class="time-text">{{ formatDate(row.savedAt) }}</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="操作" width="200" fixed="right" header-align="center">
+        <el-table-column label="操作" width="240" fixed="right" header-align="center">
           <template #default="{ row }">
             <div class="action-btns">
               <el-button size="small" type="primary" @click="handleOpen(row)">解析</el-button>
@@ -63,7 +49,6 @@
     </div>
 
     <div class="saved-pagination" v-if="savedUrlsStore.entries.length > 0">
-      <span class="total-hint">共 {{ savedUrlsStore.entries.length }} 条</span>
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
@@ -115,7 +100,7 @@ async function handleCopy(entry: SavedUrlEntry) {
 
 async function handleDelete(id: string) {
   try {
-    await ElMessageBox.confirm('确定取消收藏该链接？', '提示', {
+    await ElMessageBox.confirm('确定取消收藏该链接吗？', '提示', {
       type: 'warning',
       confirmButtonText: '取消收藏',
       cancelButtonText: '取消'
@@ -126,21 +111,34 @@ async function handleDelete(id: string) {
       currentPage.value = maxPage
     }
     ElMessage.success('已取消收藏')
-  } catch { /* cancelled */ }
+  } catch {
+    // cancelled
+  }
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+async function handleClearAll() {
+  try {
+    await ElMessageBox.confirm('确定清空所有收藏吗？此操作不可撤销。', '提示', {
+      type: 'warning',
+      confirmButtonText: '清空',
+      cancelButtonText: '取消'
+    })
+    for (const entry of [...savedUrlsStore.entries]) {
+      await savedUrlsStore.deleteEntry(entry.id)
+    }
+    currentPage.value = 1
+    ElMessage.success('收藏已清空')
+  } catch {
+    // cancelled
+  }
 }
 </script>
 
 <style scoped>
 .saved-urls-page {
-  max-width: 1060px;
+  max-width: 1140px;
   margin: 0 auto;
-  padding: 32px 28px;
+  padding: 20px 20px 16px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -151,57 +149,15 @@ function formatDate(iso: string): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   flex-shrink: 0;
-  background: var(--vb-bg-surface);
-  border: 1px solid var(--vb-border);
-  border-radius: var(--vb-radius);
-  padding: 18px 22px;
-}
-
-.saved-top-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .saved-heading {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--vb-text);
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.heading-accent {
-  display: inline-block;
-  width: 4px;
-  height: 20px;
-  border-radius: 2px;
-  background: var(--vb-accent);
-  flex-shrink: 0;
-}
-
-.saved-sub {
-  font-size: 13px;
-  color: var(--vb-text-tertiary);
-  margin: 0;
-  padding-left: 14px;
-}
-
-.count-badge {
-  display: inline-block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--vb-accent);
-  background: var(--vb-accent-bg);
-  padding: 1px 8px;
-  border-radius: 10px;
-  min-width: 24px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
 }
 
 .saved-table-wrap {
@@ -209,9 +165,9 @@ function formatDate(iso: string): string {
   min-height: 0;
   overflow: auto;
   scrollbar-gutter: stable;
-  background: var(--vb-bg-surface);
-  border: 1px solid var(--vb-border);
-  border-radius: var(--vb-radius);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .thumb-img {
@@ -231,37 +187,20 @@ function formatDate(iso: string): string {
   border-radius: 6px;
 }
 
-.meta-text {
-  font-size: 13px;
-  color: var(--vb-text-secondary);
-}
-
-.url-text {
-  font-size: 12px;
-  color: var(--vb-text-tertiary);
-}
-
-.time-text {
-  font-size: 13px;
-  color: var(--vb-text-secondary);
-}
-
 .action-btns {
   display: flex;
   gap: 6px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  white-space: nowrap;
 }
 
 .saved-pagination {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;
+  justify-content: flex-end;
+  padding: 10px 0 0;
   flex-shrink: 0;
   margin-top: auto;
-}
-
-.total-hint {
-  font-size: 13px;
-  color: var(--vb-text-tertiary);
 }
 </style>

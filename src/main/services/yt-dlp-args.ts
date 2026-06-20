@@ -5,7 +5,7 @@ import * as path from 'path'
 import type { AppSettings, CookieBrowser } from '../../shared/types'
 import { defaultSettings } from './settings.service'
 
-type SiteKind = 'bilibili' | 'tiktok' | 'douyin' | 'youtube' | 'generic'
+type SiteKind = 'bilibili' | 'tiktok' | 'douyin' | 'youtube' | 'instagram' | 'generic'
 
 interface Attempt {
   label: string
@@ -55,6 +55,10 @@ const SITE_STRATEGIES: Record<SiteKind, SiteStrategy> = {
       return denoPath ? [`youtube:js_runtime=${denoPath.replace(/\\/g, '/')}`] : []
     }
   },
+  instagram: {
+    userAgent: DESKTOP_UA,
+    headers: ['Referer:https://www.instagram.com/', 'Origin:https://www.instagram.com']
+  },
   generic: {
     userAgent: DESKTOP_UA
   }
@@ -95,6 +99,18 @@ export function buildParseAttempts(url: string, settings: AppSettings = defaultS
         ...common,
         '--extractor-args',
         'youtube:player_client=mweb,web'
+      ]
+    })
+  }
+
+  if (site === 'instagram') {
+    const common = buildCommonArgs(cleanUrl, settings)
+    attempts.push({
+      label: 'instagram:web',
+      args: [
+        ...common,
+        '--extractor-retries', '5',
+        '--fragment-retries', '20'
       ]
     })
   }

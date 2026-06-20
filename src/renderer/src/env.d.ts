@@ -13,6 +13,7 @@ interface VideoBoxApi {
   cancelDownload(taskId: string): Promise<boolean>
   recoverUnfinished(): Promise<import('../../shared/types').DownloadTask[]>
   selectSavePath(): Promise<string | null>
+  selectFilePath(): Promise<string | null>
   openFileInFolder(filepath: string): Promise<import('../../shared/types').OpenPathResult>
   resolvePath(filepath: string): Promise<import('../../shared/types').ResolvePathResult>
   fileExists(filepath: string): Promise<import('../../shared/types').FileOpResult>
@@ -35,8 +36,10 @@ interface VideoBoxApi {
   checkBiliCookies(): Promise<boolean>
   getSettings(): Promise<import('../../shared/types').AppSettings>
   updateSettings(patch: Partial<import('../../shared/types').AppSettings>): Promise<import('../../shared/types').AppSettings>
+  testProxy(proxy: string): Promise<import('../../shared/types').ProxyTestResult>
   setDeepseekKey(profileId: string, key: string): Promise<import('../../shared/types').AppSettings>
   translateText(req: import('../../shared/types').TranslateRequest): Promise<import('../../shared/types').TranslateResult>
+  testTranslateProfile(req: import('../../shared/types').TranslateTestRequest): Promise<import('../../shared/types').TranslateTestResult>
   getAppVersion(): Promise<string>
   openExternal(url: string): Promise<void>
   checkVersions(): Promise<import('../../shared/types').VersionCheckResult>

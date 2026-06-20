@@ -263,7 +263,11 @@ export class YtDlpService {
   private normalizeThumbnail(raw: RawVideoInfo): string {
     const candidates = [
       raw.thumbnail,
-      ...(Array.isArray(raw.thumbnails) ? raw.thumbnails.map((item) => toRawThumbnail(item).url) : [])
+      raw['thumbnail_url'],
+      raw['cover'],
+      raw['poster'],
+      raw['image'],
+      ...(Array.isArray(raw.thumbnails) ? raw.thumbnails.map((item) => thumbnailCandidate(item)) : [])
     ].filter(Boolean)
 
     const url = candidates
@@ -405,15 +409,20 @@ function isBilibiliHost(url: string): boolean {
 
 function pickThumbnail(raw: Record<string, unknown>): string {
   const candidates: string[] = []
-  if (typeof raw.thumbnail === 'string') candidates.push(raw.thumbnail)
+  const directKeys = ['thumbnail', 'thumbnail_url', 'cover', 'poster', 'image']
+
+  for (const key of directKeys) {
+    const value = raw[key]
+    if (typeof value === 'string') candidates.push(value)
+  }
+
   const thumbs = raw.thumbnails
   if (Array.isArray(thumbs)) {
     for (const t of thumbs) {
-      if (t && typeof t === 'object' && typeof (t as Record<string, unknown>).url === 'string') {
-        candidates.push((t as Record<string, unknown>).url as string)
-      }
+      candidates.push(thumbnailCandidate(t))
     }
   }
+
   const url = candidates.find(u => u && !u.startsWith('data:'))
   if (!url) return ''
   if (url.startsWith('//')) return `https:${url}`
@@ -431,6 +440,17 @@ function toRawVideoInfo(value: unknown): RawVideoInfo {
 
 function toRawThumbnail(value: unknown): RawThumbnail {
   return toRecord(value)
+}
+function thumbnailCandidate(value: unknown): string {
+  const record = toRecord(value)
+  const keys = ['url', 'thumbnail', 'thumbnail_url', 'cover', 'poster', 'image']
+
+  for (const key of keys) {
+    const candidate = record[key]
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim()
+  }
+
+  return ''
 }
 
 function toRawFormat(value: unknown): RawFormat {

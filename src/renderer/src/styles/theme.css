@@ -43,6 +43,65 @@
 
   /* Transition */
   --vb-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --vb-density-scale: 1;
+}
+
+:root[data-vb-accent='indigo'] {
+  --vb-accent: #6c5ce7;
+  --vb-accent-light: #8b7cf0;
+  --vb-accent-bg: rgba(108, 92, 231, 0.08);
+}
+
+:root[data-vb-accent='purple'] {
+  --vb-accent: #8b5cf6;
+  --vb-accent-light: #a78bfa;
+  --vb-accent-bg: rgba(139, 92, 246, 0.08);
+}
+
+:root[data-vb-accent='cyan'] {
+  --vb-accent: #06b6d4;
+  --vb-accent-light: #22d3ee;
+  --vb-accent-bg: rgba(6, 182, 212, 0.1);
+}
+
+:root[data-vb-accent='rose'] {
+  --vb-accent: #f43f5e;
+  --vb-accent-light: #fb7185;
+  --vb-accent-bg: rgba(244, 63, 94, 0.08);
+}
+
+:root[data-vb-theme='dark'] {
+  --vb-bg: #0f1115;
+  --vb-bg-surface: #161a21;
+  --vb-bg-elevated: #1b2029;
+  --vb-bg-hover: #222836;
+
+  --vb-border: #2a3140;
+  --vb-border-light: #202634;
+
+  --vb-text: #f3f4f6;
+  --vb-text-secondary: #a2a9b8;
+  --vb-text-tertiary: #70798c;
+
+  --vb-success-bg: rgba(16, 185, 129, 0.14);
+  --vb-warning-bg: rgba(245, 158, 11, 0.14);
+  --vb-danger-bg: rgba(239, 68, 68, 0.12);
+  --vb-info-bg: rgba(59, 130, 246, 0.14);
+
+  --vb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --vb-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --vb-shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.32);
+}
+
+:root[data-vb-density='comfortable'] {
+  --vb-density-scale: 1.05;
+}
+
+:root[data-vb-density='compact'] {
+  --vb-density-scale: 0.94;
+  --vb-radius: 8px;
+  --vb-radius-sm: 5px;
+  --vb-radius-xs: 4px;
 }
 
 /* ============ Element Plus Light Overrides ============ */
@@ -133,6 +192,42 @@
   --el-dialog-bg-color: #fff;
 }
 
+:root[data-vb-theme='dark'] {
+  --el-bg-color: var(--vb-bg-surface);
+  --el-bg-color-page: var(--vb-bg);
+  --el-bg-color-overlay: #1b2029;
+
+  --el-text-color-primary: var(--vb-text);
+  --el-text-color-regular: #d1d5db;
+  --el-text-color-secondary: var(--vb-text-secondary);
+  --el-text-color-placeholder: var(--vb-text-tertiary);
+  --el-text-color-disabled: #4b5563;
+
+  --el-border-color: var(--vb-border);
+  --el-border-color-light: #2a3140;
+  --el-border-color-lighter: #202634;
+  --el-border-color-extra-light: #181d27;
+  --el-border-color-dark: #353c4c;
+
+  --el-fill-color: var(--vb-bg-surface);
+  --el-fill-color-light: var(--vb-bg-elevated);
+  --el-fill-color-lighter: var(--vb-bg-hover);
+  --el-fill-color-blank: #12161d;
+
+  --el-input-bg-color: #12161d;
+  --el-input-border-color: var(--vb-border);
+
+  --el-table-header-bg-color: var(--vb-bg-elevated);
+  --el-table-row-hover-bg-color: var(--vb-bg-hover);
+  --el-table-border-color: var(--vb-border);
+
+  --el-menu-hover-bg-color: var(--vb-bg-hover);
+  --el-menu-text-color: var(--vb-text-secondary);
+  --el-menu-active-color: var(--vb-accent);
+
+  --el-dialog-bg-color: #161a21;
+}
+
 /* ============ Global Reset ============ */
 
 * {
@@ -154,7 +249,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  font-size: 14px;
+  font-size: calc(14px * var(--vb-density-scale));
   line-height: 1.6;
   letter-spacing: 0;
   font-feature-settings: 'tnum';
@@ -498,4 +593,46 @@ a {
 
 .el-loading-mask {
   background: rgba(255, 255, 255, 0.7) !important;
+}
+
+:root[data-vb-theme='dark'] .el-dialog {
+  background: var(--vb-bg-surface) !important;
+}
+
+:root[data-vb-theme='dark'] .el-dialog__header {
+  border-bottom-color: var(--vb-border-light) !important;
+}
+
+:root[data-vb-theme='dark'] .el-dialog__footer {
+  border-top-color: var(--vb-border-light) !important;
+}
+
+:root[data-vb-theme='dark'] .el-input__wrapper,
+:root[data-vb-theme='dark'] .el-select__wrapper,
+:root[data-vb-theme='dark'] .el-textarea__inner {
+  background: #12161d !important;
+}
+
+:root[data-vb-theme='dark'] .el-message-box {
+  background: var(--vb-bg-surface) !important;
+}
+
+:root[data-vb-density='compact'] .el-dialog__header {
+  padding: 16px 20px !important;
+}
+
+:root[data-vb-density='compact'] .el-dialog__body {
+  padding: 18px 20px !important;
+}
+
+:root[data-vb-density='compact'] .el-dialog__footer {
+  padding: 12px 20px !important;
+}
+
+:root[data-vb-density='compact'] .el-button {
+  min-height: 34px;
+}
+
+:root[data-vb-density='compact'] .el-card__body {
+  padding: 16px 18px !important;
 }

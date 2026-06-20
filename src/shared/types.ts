@@ -15,6 +15,7 @@ export const IpcChannels = {
 
   // Dialog
   DIALOG_SELECT_PATH: 'dialog:select-path',
+  DIALOG_SELECT_FILE: 'dialog:select-file',
   DIALOG_OPEN_FILE: 'dialog:open-file',
   PATH_RESOLVE: 'path:resolve',
 
@@ -40,6 +41,7 @@ export const IpcChannels = {
   // Settings
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE: 'settings:update',
+  SETTINGS_TEST_PROXY: 'settings:test-proxy',
 
   // File
   FILE_EXISTS: 'file:exists',
@@ -65,7 +67,8 @@ export const IpcChannels = {
 
   // Translation
   TRANSLATE: 'translate:request',
-  TRANSLATE_SET_KEY: 'translate:set-key'
+  TRANSLATE_SET_KEY: 'translate:set-key',
+  TRANSLATE_TEST: 'translate:test'
 } as const
 
 // ============ 视频解析 ============
@@ -139,7 +142,11 @@ export interface StartDownloadRequest {
 }
 
 export type CookieMode = 'auto' | 'browser' | 'file' | 'none'
-export type CookieBrowser = 'edge' | 'chrome' | 'brave' | 'vivaldi'
+export type CookieBrowser = 'edge' | 'chrome' | 'firefox' | 'custom'
+export type AppLanguage = 'system' | 'zh-CN' | 'en' | 'ja'
+export type ThemeMode = 'system' | 'light' | 'dark'
+export type DensityMode = 'comfortable' | 'standard' | 'compact'
+export type AccentColor = string
 
 export interface AppSettings {
   defaultSavePath: string
@@ -150,7 +157,12 @@ export interface AppSettings {
   biliCookieHours: number
   proxy: string
   downloadNotifications: boolean
+  notificationMode: 'system' | 'in-app' | 'both'
   autoRetryCount: number
+  appLanguage: AppLanguage
+  themeMode: ThemeMode
+  density: DensityMode
+  accentColor: AccentColor
   translateProfiles: TranslateProfile[]
   activeProfileId: string
 }
@@ -246,6 +258,12 @@ export interface ResolvePathResult {
   message?: string
 }
 
+export interface ProxyTestResult {
+  ok: boolean
+  message: string
+  latencyMs?: number
+}
+
 // ============ 历史记录 ============
 
 export interface HistoryEntry {
@@ -315,4 +333,15 @@ export interface TranslateRequest {
 
 export interface TranslateResult {
   translatedText: string
+}
+
+export interface TranslateTestRequest {
+  endpoint: string
+  model: string
+  apiKey: string
+}
+
+export interface TranslateTestResult {
+  ok: boolean
+  message: string
 }

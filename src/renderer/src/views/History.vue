@@ -1,13 +1,7 @@
 <template>
   <div class="history-page">
     <div class="history-top">
-      <div class="history-top-left">
-        <h2 class="history-heading">
-          下载历史
-          <span class="count-badge">{{ historyStore.entries.length }}</span>
-        </h2>
-        <p class="history-sub">当前保存的下载记录</p>
-      </div>
+      <h2 class="history-heading">下载历史</h2>
       <el-button
         type="danger"
         plain
@@ -21,13 +15,13 @@
     <HistoryTable
       :entries="pagedEntries"
       :loading="historyStore.loading"
+      :show-header="false"
       @open-location="handleOpenLocation"
       @process="handleFileProcess"
       @delete="handleDelete"
     />
 
     <div class="history-pagination" v-if="historyStore.entries.length > 0">
-      <span class="total-hint">共 {{ historyStore.entries.length }} 条</span>
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
@@ -65,13 +59,11 @@ onMounted(() => {
   historyStore.loadHistory()
 })
 
-// 当前页数据
 const pagedEntries = computed<HistoryEntry[]>(() => {
   const start = (currentPage.value - 1) * pageSize.value
   return historyStore.entries.slice(start, start + pageSize.value)
 })
 
-// ── 打开文件所在位置 ──
 async function handleOpenLocation(row: HistoryEntry) {
   if (!row.filepath) {
     ElMessage.warning('文件路径不存在，无法打开所在位置')
@@ -87,7 +79,6 @@ async function handleOpenLocation(row: HistoryEntry) {
   }
 }
 
-// ── 文件处理 ──
 function handleFileProcess(row: HistoryEntry) {
   if (!row.filepath) {
     ElMessage.warning('文件不存在，无法处理')
@@ -97,16 +88,13 @@ function handleFileProcess(row: HistoryEntry) {
   processDialogVisible.value = true
 }
 
-// ── 删除 ──
 async function handleDelete(row: HistoryEntry) {
-  // 第 1 层：确认弹框（checkbox 选择是否同时删文件）
   const deleteFile = ref(false)
   try {
     await ElMessageBox({
       title: '删除下载记录',
       message: h('div', { class: 'history-delete-confirm' }, [
-        h('p', { class: 'history-delete-confirm__description' },
-          '此操作将永久删除该下载记录，且不可恢复。'),
+        h('p', { class: 'history-delete-confirm__description' }, '此操作将永久删除该下载记录，且不可恢复。'),
         h('label', { class: 'history-delete-confirm__option' }, [
           h('input', {
             type: 'checkbox',
@@ -136,7 +124,6 @@ async function handleDelete(row: HistoryEntry) {
     return
   }
 
-  // 第 2 层：校验路径有效性
   if (!row.filepath) {
     await historyStore.deleteEntry(row.id)
     adjustPageAfterDelete()
@@ -144,7 +131,6 @@ async function handleDelete(row: HistoryEntry) {
     return
   }
 
-  // 第 3 层：判断文件是否存在
   try {
     const existsResult = await window.api.fileExists(row.filepath)
     if (!existsResult.ok) {
@@ -160,21 +146,20 @@ async function handleDelete(row: HistoryEntry) {
     return
   }
 
-  // 第 4 层：删除本地文件
   try {
     const deleteResult = await window.api.deleteFile(row.filepath)
     if (!deleteResult.ok) {
-      ElMessage.error(deleteResult.message || '文件删除失败，请检查文件是否被占用或路径是否有效')
+      ElMessage.error(deleteResult.message || '文件删除失败，请检查文件是否被占用')
       return
     }
   } catch {
-    ElMessage.error('文件删除失败，请检查文件是否被占用或路径是否有效')
+    ElMessage.error('文件删除失败，请检查文件是否被占用')
     return
   }
 
   await historyStore.deleteEntry(row.id)
   adjustPageAfterDelete()
-  ElMessage.success('文件及记录已删除')
+  ElMessage.success('文件和记录已删除')
 }
 
 function adjustPageAfterDelete() {
@@ -185,7 +170,6 @@ function adjustPageAfterDelete() {
   }
 }
 
-// ── 清空全部 ──
 async function handleClear() {
   try {
     await ElMessageBox.confirm('确定要清空所有下载历史吗？此操作不可撤销。', '确认清空', {
@@ -196,15 +180,17 @@ async function handleClear() {
     await historyStore.clearHistory()
     currentPage.value = 1
     ElMessage.success('历史已清空')
-  } catch { /* canceled */ }
+  } catch {
+    // cancelled
+  }
 }
 </script>
 
 <style scoped>
 .history-page {
-  max-width: 1060px;
+  max-width: 1140px;
   margin: 0 auto;
-  padding: 32px 28px;
+  padding: 20px 20px 16px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -215,61 +201,23 @@ async function handleClear() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   flex-shrink: 0;
-  background: var(--vb-bg-surface);
-  border: 1px solid var(--vb-border);
-  border-radius: 16px;
-  padding: 14px 18px;
-}
-
-.history-top-left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .history-heading {
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--vb-text);
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.history-sub {
-  font-size: 12px;
-  color: var(--vb-text-tertiary);
-  margin: 0;
-  padding-left: 0;
-}
-
-.count-badge {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--vb-accent);
-  background: var(--vb-accent-bg);
-  padding: 1px 8px;
-  border-radius: 10px;
-  min-width: 24px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
 }
 
 .history-pagination {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
+  justify-content: flex-end;
+  padding: 10px 0 0;
   flex-shrink: 0;
   margin-top: auto;
-}
-
-.total-hint {
-  font-size: 13px;
-  color: var(--vb-text-tertiary);
 }
 </style>

@@ -19,9 +19,33 @@ export const defaultSettings: AppSettings = {
   biliCookieHours: 168,
   proxy: '',
   downloadNotifications: true,
+  notificationMode: 'system',
   autoRetryCount: 1,
+  appLanguage: 'system',
+  themeMode: 'system',
+  density: 'standard',
+  accentColor: '#6c5ce7',
   translateProfiles: [],
   activeProfileId: ''
+}
+
+const accentPresets: Record<string, string> = {
+  indigo: '#6c5ce7',
+  purple: '#8b5cf6',
+  cyan: '#06b6d4',
+  rose: '#f43f5e'
+}
+
+function sanitizeCookieBrowser(value: unknown): AppSettings['cookieBrowser'] {
+  return pickValue(value, ['edge', 'chrome', 'firefox', 'custom'], defaultSettings.cookieBrowser)
+}
+
+function sanitizeAccentColor(value: unknown): string {
+  if (typeof value !== 'string') return defaultSettings.accentColor
+  const trimmed = value.trim().toLowerCase()
+  if (trimmed in accentPresets) return accentPresets[trimmed]
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed
+  return defaultSettings.accentColor
 }
 
 export class SettingsService {
@@ -51,7 +75,13 @@ export class SettingsService {
       ...patch,
       concurrentDownloads: clampNumber(patch.concurrentDownloads ?? this.settings.concurrentDownloads, 1, 8),
       autoRetryCount: clampNumber(patch.autoRetryCount ?? this.settings.autoRetryCount, 0, 3),
-      biliCookieHours: clampNumber(patch.biliCookieHours ?? this.settings.biliCookieHours, 1, 8760)
+      biliCookieHours: clampNumber(patch.biliCookieHours ?? this.settings.biliCookieHours, 1, 8760),
+      cookieBrowser: sanitizeCookieBrowser(patch.cookieBrowser ?? this.settings.cookieBrowser),
+      notificationMode: pickValue(patch.notificationMode ?? this.settings.notificationMode, ['system', 'in-app', 'both'], defaultSettings.notificationMode),
+      appLanguage: pickValue(patch.appLanguage ?? this.settings.appLanguage, ['system', 'zh-CN', 'en', 'ja'], defaultSettings.appLanguage),
+      themeMode: pickValue(patch.themeMode ?? this.settings.themeMode, ['system', 'light', 'dark'], defaultSettings.themeMode),
+      density: pickValue(patch.density ?? this.settings.density, ['comfortable', 'standard', 'compact'], defaultSettings.density),
+      accentColor: sanitizeAccentColor(patch.accentColor ?? this.settings.accentColor)
     }
     this.settings.translateProfiles = this.withKeyState(this.settings.translateProfiles)
     this.saveToDisk()
@@ -139,7 +169,13 @@ export class SettingsService {
       ...raw,
       concurrentDownloads: clampNumber(raw.concurrentDownloads ?? defaultSettings.concurrentDownloads, 1, 8),
       autoRetryCount: clampNumber(raw.autoRetryCount ?? defaultSettings.autoRetryCount, 0, 3),
-      biliCookieHours: clampNumber(raw.biliCookieHours ?? defaultSettings.biliCookieHours, 1, 8760)
+      biliCookieHours: clampNumber(raw.biliCookieHours ?? defaultSettings.biliCookieHours, 1, 8760),
+      cookieBrowser: sanitizeCookieBrowser(raw.cookieBrowser ?? defaultSettings.cookieBrowser),
+      notificationMode: pickValue(raw.notificationMode, ['system', 'in-app', 'both'], defaultSettings.notificationMode),
+      appLanguage: pickValue(raw.appLanguage, ['system', 'zh-CN', 'en', 'ja'], defaultSettings.appLanguage),
+      themeMode: pickValue(raw.themeMode, ['system', 'light', 'dark'], defaultSettings.themeMode),
+      density: pickValue(raw.density, ['comfortable', 'standard', 'compact'], defaultSettings.density),
+      accentColor: sanitizeAccentColor(raw.accentColor)
     }
     return {
       ...normalized,
@@ -175,4 +211,8 @@ function clampNumber(value: number, min: number, max: number): number {
   const n = Number(value)
   if (!Number.isFinite(n)) return min
   return Math.min(max, Math.max(min, Math.round(n)))
+}
+
+function pickValue<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback
 }

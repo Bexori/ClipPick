@@ -32,6 +32,8 @@ const api = {
   // Dialog
   selectSavePath: (): Promise<string | null> =>
     ipcRenderer.invoke('dialog:select-path'),
+  selectFilePath: (): Promise<string | null> =>
+    ipcRenderer.invoke('dialog:select-file'),
   openFileInFolder: (filepath: string): Promise<import('../shared/types').OpenPathResult> =>
     ipcRenderer.invoke('dialog:open-file', { filepath }),
   resolvePath: (filepath: string): Promise<import('../shared/types').ResolvePathResult> =>
@@ -88,12 +90,16 @@ const api = {
     ipcRenderer.invoke('settings:get'),
   updateSettings: (patch: Partial<AppSettings>): Promise<AppSettings> =>
     ipcRenderer.invoke('settings:update', patch),
+  testProxy: (proxy: string): Promise<import('../shared/types').ProxyTestResult> =>
+    ipcRenderer.invoke('settings:test-proxy', { proxy }),
   setDeepseekKey: (profileId: string, key: string): Promise<AppSettings> =>
     ipcRenderer.invoke('translate:set-key', { profileId, key }),
 
   // Translation
   translateText: (req: TranslateRequest): Promise<TranslateResult> =>
     ipcRenderer.invoke('translate:request', req),
+  testTranslateProfile: (req: import('../shared/types').TranslateTestRequest): Promise<import('../shared/types').TranslateTestResult> =>
+    ipcRenderer.invoke('translate:test', req),
 
   // App
   getAppVersion: (): Promise<string> =>

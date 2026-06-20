@@ -1,62 +1,76 @@
 <template>
-  <div class="app-shell" :class="{ 'sidebar-collapsed': collapsed }">
-    <aside class="sidebar">
-      <nav class="sidebar-nav">
-        <router-link to="/" class="nav-item" :class="{ active: activeMenu === '/' }" title="首页">
-          <el-icon :size="18"><Download /></el-icon>
-          <span>首页</span>
-        </router-link>
-        <router-link to="/history" class="nav-item" :class="{ active: activeMenu === '/history' }" title="历史">
-          <el-icon :size="18"><Clock /></el-icon>
-          <span>历史</span>
-        </router-link>
-        <router-link to="/saved-urls" class="nav-item" :class="{ active: activeMenu === '/saved-urls' }" title="收藏">
-          <el-icon :size="18"><Star /></el-icon>
-          <span>收藏</span>
-        </router-link>
-      </nav>
+  <el-config-provider :locale="elementLocale">
+    <div class="app-shell" :class="{ 'sidebar-collapsed': collapsed }">
+      <aside class="sidebar">
+        <nav class="sidebar-nav">
+          <router-link to="/" class="nav-item" :class="{ active: activeMenu === '/' }" title="首页">
+            <el-icon :size="18"><Download /></el-icon>
+            <span>首页</span>
+          </router-link>
+          <router-link to="/history" class="nav-item" :class="{ active: activeMenu === '/history' }" title="历史">
+            <el-icon :size="18"><Clock /></el-icon>
+            <span>历史</span>
+          </router-link>
+          <router-link to="/saved-urls" class="nav-item" :class="{ active: activeMenu === '/saved-urls' }" title="收藏">
+            <el-icon :size="18"><Star /></el-icon>
+            <span>收藏</span>
+          </router-link>
+        </nav>
 
-      <div class="sidebar-footer">
-        <button type="button" class="settings-btn" title="设置" @click="openSettings">
-          <el-icon :size="18"><Setting /></el-icon>
-          <span>设置</span>
-        </button>
-      </div>
+        <div class="sidebar-footer">
+          <button type="button" class="settings-btn" :class="{ active: activeMenu === '/settings' }" title="设置" @click="openSettings">
+            <el-icon :size="18"><Setting /></el-icon>
+            <span>设置</span>
+          </button>
+        </div>
 
-      <div class="hover-zone">
-        <button
-          type="button"
-          class="sidebar-toggle"
-          @click="toggleCollapsed"
-        >
-          <el-icon :size="12"><ArrowRightBold v-if="collapsed" /><ArrowLeftBold v-else /></el-icon>
-        </button>
-      </div>
-    </aside>
+        <div class="hover-zone">
+          <button type="button" class="sidebar-toggle" @click="toggleCollapsed">
+            <el-icon :size="12"><ArrowRightBold v-if="collapsed" /><ArrowLeftBold v-else /></el-icon>
+          </button>
+        </div>
+      </aside>
 
-    <main class="main-content">
-      <router-view v-slot="{ Component }">
-        <transition name="page-fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-    </main>
-
-    <SettingsDialog ref="settingsRef" />
-  </div>
+      <main class="main-content">
+        <router-view v-slot="{ Component }">
+          <transition name="page-fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </main>
+    </div>
+  </el-config-provider>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftBold, ArrowRightBold, Clock, Download, Setting, Star } from '@element-plus/icons-vue'
-import SettingsDialog from './components/SettingsDialog.vue'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import en from 'element-plus/es/locale/lang/en'
+import ja from 'element-plus/es/locale/lang/ja'
+import { useSettingsStore } from './stores/settings.store'
 
 const route = useRoute()
-const collapsed = ref(localStorage.getItem('clippick-sidebar-collapsed') === '1')
-const settingsRef = ref<InstanceType<typeof SettingsDialog> | null>(null)
+const router = useRouter()
+const settingsStore = useSettingsStore()
 
+const collapsed = ref(localStorage.getItem('clippick-sidebar-collapsed') === '1')
 const activeMenu = computed(() => route.path)
+const colorScheme = window.matchMedia('(prefers-color-scheme: dark)')
+const accentPresets: Record<string, string> = {
+  indigo: '#6c5ce7',
+  purple: '#8b5cf6',
+  cyan: '#06b6d4',
+  rose: '#f43f5e'
+}
+
+const elementLocale = computed(() => {
+  const lang = resolveLanguage(settingsStore.appLanguage)
+  if (lang === 'en') return en
+  if (lang === 'ja') return ja
+  return zhCn
+})
 
 function toggleCollapsed() {
   collapsed.value = !collapsed.value
@@ -64,8 +78,121 @@ function toggleCollapsed() {
 }
 
 function openSettings() {
-  settingsRef.value?.open()
+  router.push('/settings')
 }
+
+function resolveTheme(mode: string) {
+  if (mode === 'dark') return 'dark'
+  if (mode === 'light') return 'light'
+  return colorScheme.matches ? 'dark' : 'light'
+}
+
+function resolveLanguage(mode: string) {
+  if (mode === 'en' || mode === 'ja' || mode === 'zh-CN') return mode
+  const browser = navigator.language.toLowerCase()
+  if (browser.startsWith('en')) return 'en'
+  if (browser.startsWith('ja')) return 'ja'
+  return 'zh-CN'
+}
+
+function parseHexColor(value: string): { r: number; g: number; b: number } | null {
+  const match = /^#?([0-9a-f]{6})$/i.exec(value.trim())
+  if (!match) return null
+  const hex = match[1]
+  return {
+    r: Number.parseInt(hex.slice(0, 2), 16),
+    g: Number.parseInt(hex.slice(2, 4), 16),
+    b: Number.parseInt(hex.slice(4, 6), 16)
+  }
+}
+
+function toHexChannel(value: number): string {
+  return Math.round(Math.min(255, Math.max(0, value))).toString(16).padStart(2, '0')
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return `#${toHexChannel(r)}${toHexChannel(g)}${toHexChannel(b)}`
+}
+
+function mixHexColor(from: string, to: string, amount: number): string {
+  const start = parseHexColor(from)
+  const end = parseHexColor(to)
+  if (!start || !end) return from
+  const ratio = Math.min(1, Math.max(0, amount))
+  return rgbToHex(
+    start.r + (end.r - start.r) * ratio,
+    start.g + (end.g - start.g) * ratio,
+    start.b + (end.b - start.b) * ratio
+  )
+}
+
+function accentToThemeVars(accent: string) {
+  const preset = accentPresets[accent]
+  if (preset) {
+    return {
+      token: accent,
+      accent: preset,
+      accentLight: mixHexColor(preset, '#ffffff', 0.15),
+      accentBg: `rgba(${parseHexColor(preset)?.r ?? 108}, ${parseHexColor(preset)?.g ?? 92}, ${parseHexColor(preset)?.b ?? 231}, 0.08)`
+    }
+  }
+
+  const normalized = parseHexColor(accent) ? accent : accentPresets.indigo
+  const base = parseHexColor(normalized) || parseHexColor(accentPresets.indigo)!
+  return {
+    token: 'custom',
+    accent: normalized,
+    accentLight: mixHexColor(normalized, '#ffffff', 0.15),
+    accentBg: `rgba(${base.r}, ${base.g}, ${base.b}, 0.08)`
+  }
+}
+
+function applyUiSettings() {
+  const root = document.documentElement
+  const settings = settingsStore.settings
+
+  root.dataset.vbTheme = resolveTheme(settings.themeMode)
+  const accent = accentToThemeVars(settings.accentColor)
+  root.dataset.vbAccent = accent.token
+  root.style.setProperty('--vb-accent', accent.accent)
+  root.style.setProperty('--vb-accent-light', accent.accentLight)
+  root.style.setProperty('--vb-accent-bg', accent.accentBg)
+  root.dataset.vbDensity = settings.density
+  root.lang = resolveLanguage(settings.appLanguage)
+}
+
+function handleColorSchemeChange() {
+  if (settingsStore.settings.themeMode === 'system') {
+    applyUiSettings()
+  }
+}
+
+onMounted(async () => {
+  if (!settingsStore.loaded) {
+    await settingsStore.loadFromLocal()
+  }
+
+  applyUiSettings()
+  colorScheme.addEventListener?.('change', handleColorSchemeChange)
+})
+
+watch(
+  () => [
+    settingsStore.themeMode,
+    settingsStore.accentColor,
+    settingsStore.density,
+    settingsStore.appLanguage,
+    settingsStore.loaded
+  ],
+  () => {
+    applyUiSettings()
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  colorScheme.removeEventListener?.('change', handleColorSchemeChange)
+})
 </script>
 
 <style scoped>
@@ -152,7 +279,8 @@ function openSettings() {
   text-align: left;
 }
 
-.settings-btn:hover {
+.settings-btn:hover,
+.settings-btn.active {
   color: var(--vb-text);
   background: var(--vb-bg-hover);
 }
