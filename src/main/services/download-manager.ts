@@ -77,7 +77,7 @@ export class DownloadManager {
       const taskId = randomUUID()
       win.webContents.send('download:error', {
         taskId,
-        error: '下载失败：视频链接为空',
+        error: 'Download failed: video URL is empty',
         detail: 'StartDownloadRequest.url is empty.'
       } as ErrorPayload)
       return taskId
@@ -151,7 +151,7 @@ export class DownloadManager {
           eta: '',
           downloadedBytes: entry.downloadedBytes,
           totalBytes: entry.totalBytes,
-          error: '下载已中断，请重试',
+          error: 'Download was interrupted. Please requeue it.',
           retryCount: 0,
           maxRetries: this.settings.get().autoRetryCount,
           createdAt: new Date().toISOString()
@@ -160,6 +160,7 @@ export class DownloadManager {
       }
     }
 
+    this.clearPersistedQueue()
     logger.info(`Recovered ${recovered.length} unfinished download(s) from previous session`)
     return recovered
   }
@@ -179,17 +180,21 @@ export class DownloadManager {
         managed.destLine,
         managed.outputPath
       )
+      const subtitleFiles = this.findSubtitleFiles(managed.req.outputDir, this.buildOutputBasename(managed.req))
+      const subtitleStatus = this.resolveSubtitleStatus(managed.req, output.stderr, subtitleFiles)
       logger.info(`Download completed: ${managed.taskId} -> ${finalPath}`)
       win.webContents.send('download:complete', {
         taskId: managed.taskId,
         filepath: finalPath,
-        filesize: managed.totalBytes
+        filesize: managed.totalBytes,
+        subtitleFiles,
+        subtitleStatus
       } as CompletePayload)
 
       if (this.settings.get().downloadNotifications && Notification.isSupported()) {
         const n = new Notification({
-          title: '下载完成',
-          body: managed.req.filename || '视频下载完成',
+          title: 'Download complete',
+          body: managed.req.filename || 'Video download complete',
           silent: false
         })
         n.on('click', () => {
@@ -254,7 +259,7 @@ export class DownloadManager {
       logger.error(`Download process error: ${taskId}`, err)
       win.webContents.send('download:error', {
         taskId,
-        error: `启动下载失败: ${err.message}`,
+        error: `闂傚倸鍊搁崐椋庣矆娓氣偓楠炲鏁撻悩鑼槱閻熸粎澧楃敮鎺楀垂閸岀偞鐓熸俊銈傚亾闁绘锕畷锝堢疀濞戞瑧鍘撻梺鍛婄箓鐎氼剟鍩€椤掆偓椤兘宕洪姀銈呯睄闁割偆鍠庨埀顒傛暬閺屻劌鈹戦崱娑扁偓妤侇殽閻愭惌娈樼紒杈ㄥ笚閹峰懐鎲撮崟顓炲殥婵＄偑鍊ら崢鐓庮焽閿熺姷宓侀柛鈩冪☉缁犮儲銇勯弬鍨挃闁告洘锕㈠? ${err.message}`,
         detail: err.stack || err.message
       } as ErrorPayload)
       this.downloads.delete(taskId)
@@ -407,40 +412,40 @@ export class DownloadManager {
 
   private formatDownloadError(stderr: string, code: number | null): string {
     if (stderr.includes('Could not copy Chrome cookie database')) {
-      return '下载失败：无法读取浏览器 Cookie，请关闭浏览器或改用 cookies.txt'
+      return 'Download failed: unable to read browser cookies. Close the browser or use cookies.txt'
     }
     if (stderr.includes('Only images are available') || stderr.includes('No downloadable formats')) {
-      return '下载失败：YouTube 只返回了缩略图格式，请使用 cookies.txt 或配置 JS Runtime'
+      return 'Download failed: no downloadable formats were found'
     }
     if (stderr.includes('n challenge solving failed') || stderr.includes('No supported JavaScript runtime')) {
-      return '下载失败：YouTube 挑战解析失败，请安装 Deno 或 Node 22+'
+      return 'Download failed: YouTube challenge parsing failed. Install Deno or Node 22+'
     }
     if (stderr.includes('PO Token')) {
-      return '下载失败：YouTube 当前需要 PO Token 或登录 Cookie'
+      return 'Download failed: YouTube currently requires a PO Token or login cookie'
     }
-    if (stderr.includes('DRM protected')) return '下载失败：该视频受 DRM 保护'
+    if (stderr.includes('DRM protected')) return 'Download failed: this video is DRM protected'
     if (stderr.includes('Sign in') || stderr.includes('login') || stderr.includes('cookies')) {
-      return '下载失败：可能需要登录 Cookie'
+      return 'Download failed: login cookie may be required'
     }
     if (stderr.includes('HTTP Error 403') || stderr.includes('Forbidden')) {
-      return '下载失败：访问被拒绝，请检查 Cookie 或代理'
+      return 'Download failed: access was denied. Check your cookie or proxy.'
     }
-    if (stderr.includes('Unsupported URL')) return '下载失败：不支持的链接'
+    if (stderr.includes('Unsupported URL')) return 'Download failed: unsupported URL'
     if (stderr.includes('Video unavailable') || stderr.includes('not available')) {
-      return '下载失败：视频不可用或有地区限制'
+      return 'Download failed: video unavailable or region restricted'
     }
     if (stderr.includes('Requested format is not available')) {
-      return '下载失败：所选格式不可用，请重新解析后选择其他格式'
+      return 'Download failed: the selected format is no longer available'
     }
-    return `下载失败 (退出码 ${code ?? 'unknown'})`
+    return `Download failed (exit code ${code ?? 'unknown'})`
   }
 
   private sanitizeFilename(name: string): string {
     return name
       .normalize('NFKC')
-      .replace(/�/g, '')
+      .replace(/\uFFFD/g, '')
       .replace(/[\x00-\x1F\x7F]/g, '')
-      .replace(/[<>:"/\\|?*]/g, '_')
+      .replace(new RegExp("[<>:\"'/\\\\|?*]", "g"), "_")
       .replace(/^\.+/, '')
       .replace(/_+/g, '_')
       .replace(/[\s.]+$/, '')
@@ -481,6 +486,55 @@ export class DownloadManager {
     }
 
     return destLine || outputTemplate.replace(/\.%\(ext\)s$/, '')
+  }
+
+  private findSubtitleFiles(outputDir: string, filename: string): string[] {
+    const subtitleExts = new Set(['.srt', '.ass', '.ssa', '.vtt', '.lrc', '.ttml', '.srv3', '.json3'])
+    const prefix = `${filename}.`
+
+    try {
+      return fs.readdirSync(outputDir, { withFileTypes: true })
+        .filter(entry => entry.isFile())
+        .map(entry => entry.name)
+        .filter(name => name.startsWith(prefix) && subtitleExts.has(path.extname(name).toLowerCase()))
+        .map(name => path.join(outputDir, name))
+        .sort((a, b) => a.localeCompare(b))
+    } catch {
+      return []
+    }
+  }
+
+  private resolveSubtitleStatus(
+    req: StartDownloadRequest,
+    stderr: string,
+    subtitleFiles: string[]
+  ): CompletePayload['subtitleStatus'] {
+    const requested = Boolean(req.writeSubs || req.writeAutoSubs)
+    if (!requested) return 'none'
+
+    const logText = stderr.toLowerCase()
+    const embedRequested = Boolean(req.embedSubs)
+    const embedSucceeded =
+      logText.includes('embedsubtitle') ||
+      logText.includes('embedding subtitles') ||
+      logText.includes('subtitles embedded')
+    const embedFailed =
+      logText.includes("there aren't any subtitles to embed") ||
+      logText.includes('unable to embed subtitles') ||
+      logText.includes('cannot embed subtitles') ||
+      logText.includes('subtitle embedding failed')
+
+    if (embedRequested && embedSucceeded && subtitleFiles.length === 0) {
+      return 'embedded'
+    }
+
+    if (subtitleFiles.length > 0) {
+      if (embedRequested && embedFailed) return 'embed-failed'
+      return 'external'
+    }
+
+    if (embedRequested && embedSucceeded) return 'embedded'
+    return 'none'
   }
 
   private parseSize(text: string): number {

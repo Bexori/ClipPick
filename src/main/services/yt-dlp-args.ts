@@ -5,7 +5,16 @@ import * as path from 'path'
 import type { AppSettings, CookieBrowser } from '../../shared/types'
 import { defaultSettings } from './settings.service'
 
-type SiteKind = 'bilibili' | 'tiktok' | 'douyin' | 'youtube' | 'instagram' | 'generic'
+type SiteKind =
+  | 'bilibili'
+  | 'tiktok'
+  | 'douyin'
+  | 'youtube'
+  | 'instagram'
+  | 'twitter'
+  | 'reddit'
+  | 'facebook'
+  | 'generic'
 
 interface Attempt {
   label: string
@@ -59,6 +68,18 @@ const SITE_STRATEGIES: Record<SiteKind, SiteStrategy> = {
     userAgent: DESKTOP_UA,
     headers: ['Referer:https://www.instagram.com/', 'Origin:https://www.instagram.com']
   },
+  twitter: {
+    userAgent: MOBILE_UA,
+    headers: ['Referer:https://x.com/', 'Origin:https://x.com']
+  },
+  reddit: {
+    userAgent: DESKTOP_UA,
+    headers: ['Referer:https://www.reddit.com/']
+  },
+  facebook: {
+    userAgent: MOBILE_UA,
+    headers: ['Referer:https://www.facebook.com/', 'Origin:https://www.facebook.com']
+  },
   generic: {
     userAgent: DESKTOP_UA
   }
@@ -111,6 +132,50 @@ export function buildParseAttempts(url: string, settings: AppSettings = defaultS
         ...common,
         '--extractor-retries', '5',
         '--fragment-retries', '20'
+      ]
+    })
+  }
+
+  if (site === 'twitter') {
+    attempts.push({
+      label: 'twitter:mobile',
+      args: [
+        '--no-check-certificates',
+        '--geo-bypass',
+        '--extractor-retries', '5',
+        '--fragment-retries', '20',
+        '--user-agent', MOBILE_UA,
+        '--add-header', 'Referer:https://x.com/',
+        '--add-header', 'Origin:https://x.com/'
+      ]
+    })
+  }
+
+  if (site === 'reddit') {
+    attempts.push({
+      label: 'reddit:old',
+      args: [
+        '--no-check-certificates',
+        '--geo-bypass',
+        '--extractor-retries', '5',
+        '--fragment-retries', '15',
+        '--user-agent', DESKTOP_UA,
+        '--add-header', 'Referer:https://old.reddit.com/'
+      ]
+    })
+  }
+
+  if (site === 'facebook') {
+    attempts.push({
+      label: 'facebook:mobile',
+      args: [
+        '--no-check-certificates',
+        '--geo-bypass',
+        '--extractor-retries', '5',
+        '--fragment-retries', '20',
+        '--user-agent', MOBILE_UA,
+        '--add-header', 'Referer:https://m.facebook.com/',
+        '--add-header', 'Origin:https://m.facebook.com/'
       ]
     })
   }
@@ -211,6 +276,7 @@ export function buildDownloadArgs(
   if (subs?.writeSubs) args.push('--write-subs')
   if (subs?.writeAutoSubs) args.push('--write-auto-subs')
   if (subs?.subLangs) args.push('--sub-langs', subs.subLangs)
+  if (subs?.writeSubs || subs?.writeAutoSubs) args.push('--convert-subs', 'srt')
   if (subs?.embedSubs) args.push('--embed-subs')
 
   return args
@@ -317,6 +383,13 @@ function detectSite(url: string): SiteKind {
     if (hostname.includes('bilibili.com') || hostname === 'b23.tv') return 'bilibili'
     if (hostname.includes('youtube.com') || hostname === 'youtu.be') return 'youtube'
     if (hostname.includes('tiktok.com')) return 'tiktok'
+    if (hostname === 'x.com' || hostname.endsWith('.x.com') || hostname === 'twitter.com' || hostname.endsWith('.twitter.com')) {
+      return 'twitter'
+    }
+    if (hostname === 'reddit.com' || hostname.endsWith('.reddit.com') || hostname === 'redd.it') return 'reddit'
+    if (hostname === 'facebook.com' || hostname.endsWith('.facebook.com') || hostname === 'fb.watch' || hostname === 'fb.com') {
+      return 'facebook'
+    }
     if (
       hostname.includes('douyin.com') ||
       hostname.includes('iesdouyin.com') ||

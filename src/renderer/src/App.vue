@@ -199,6 +199,7 @@ onBeforeUnmount(() => {
 .app-shell {
   display: flex;
   height: 100vh;
+  min-width: 0;
   background: var(--vb-bg);
 }
 
@@ -359,6 +360,7 @@ onBeforeUnmount(() => {
 
 .main-content {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -371,5 +373,31 @@ onBeforeUnmount(() => {
 .page-fade-enter-from,
 .page-fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 72px;
+  }
+
+  .sidebar-nav {
+    padding: 12px 10px 0;
+  }
+
+  .nav-item,
+  .settings-btn {
+    justify-content: center;
+    padding: 10px;
+  }
+
+  .nav-item span,
+  .settings-btn span,
+  .hover-zone {
+    display: none;
+  }
+
+  .sidebar-footer {
+    align-items: center;
+  }
 }
 </style>

@@ -48,6 +48,14 @@
             >
               {{ translating ? '翻译中' : (translatedText ? '重新翻译' : '翻译') }}
             </button>
+            <button
+              v-if="translatedText"
+              type="button"
+              class="translate-toggle"
+              @click="translationExpanded = !translationExpanded"
+            >
+              {{ translationExpanded ? '收起翻译' : '展开翻译' }}
+            </button>
           </div>
         </div>
       </div>
@@ -60,25 +68,13 @@
       <p class="full-desc-text">{{ info.description }}</p>
     </div>
 
-    <div v-if="translatedText" class="vi-translation-full">
+    <div v-if="translatedText && translationExpanded" class="vi-translation-full">
       <div class="full-desc-head">
         <span>翻译结果</span>
       </div>
-      <p v-if="translationExpanded" class="full-desc-text">
+      <p class="full-desc-text">
         {{ translatedText }}
       </p>
-      <p v-else class="full-desc-text translation-preview">
-        {{ translationPreview }}
-      </p>
-      <div class="translation-actions">
-        <button
-          type="button"
-          class="translation-collapse-toggle"
-          @click="translationExpanded = !translationExpanded"
-        >
-          {{ translationExpanded ? '收起翻译' : '展开翻译' }}
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -104,13 +100,6 @@ const translatedText = ref("");
 const normalizedDescription = computed(() =>
   normalizeDescription(props.info.description || ""),
 );
-
-const translationPreview = computed(() => {
-  const text = normalizeDescription(translatedText.value);
-  if (!text) return "";
-  if (text.length <= 140) return text;
-  return `${text.slice(0, 140).trimEnd()}...`;
-});
 
 const descriptionPreview = computed(() => {
   const text = normalizedDescription.value;
@@ -369,29 +358,6 @@ function formatDuration(seconds: number): string {
   margin-top: 2px;
 }
 
-.translation-collapse-toggle {
-  border: 0;
-  background: transparent;
-  color: var(--vb-accent);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  padding: 0;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.translation-collapse-toggle:hover {
-  opacity: 0.82;
-  text-decoration: underline;
-}
-
-.translation-actions {
-  display: flex;
-  justify-content: flex-start;
-  gap: 8px;
-}
-
 .full-desc-text {
   margin: 0;
   font-size: 12px;
@@ -399,10 +365,6 @@ function formatDuration(seconds: number): string {
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.translation-preview {
-  color: var(--vb-text-tertiary);
 }
 
 @media (max-width: 720px) {

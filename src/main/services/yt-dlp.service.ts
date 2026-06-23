@@ -331,14 +331,17 @@ export class YtDlpService {
 
     function collect(obj: unknown, kind: 'manual' | 'auto') {
       if (!obj || typeof obj !== 'object') return
-      for (const lang of Object.keys(obj as Record<string, unknown>)) {
+      for (const [lang, tracks] of Object.entries(obj as Record<string, unknown>)) {
+        const normalizedTracks = normalizeSubtitleTracks(tracks)
+        if (normalizedTracks.length === 0) continue
         const key = `${kind}:${lang}`
         if (seen.has(key)) continue
         seen.add(key)
+        const embeddable = normalizedTracks.some(track => isEmbeddableSubtitleExt(track.ext))
         try {
-          result.push({ lang, label: langNames.of(lang) ?? lang, kind })
+          result.push({ lang, label: langNames.of(lang) ?? lang, kind, embeddable })
         } catch {
-          result.push({ lang, label: lang, kind })
+          result.push({ lang, label: lang, kind, embeddable })
         }
       }
     }
@@ -464,4 +467,20 @@ function stringValue(value: unknown): string {
 function numberValue(value: unknown): number {
   const n = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(n) ? n : 0
+}
+
+function normalizeSubtitleTracks(value: unknown): Array<{ ext: string; url: string }> {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => toRecord(item))
+    .map((track) => ({
+      ext: typeof track.ext === 'string' ? track.ext.trim().toLowerCase() : '',
+      url: typeof track.url === 'string' ? track.url.trim() : ''
+    }))
+    .filter(track => Boolean(track.url))
+}
+
+function isEmbeddableSubtitleExt(ext: string): boolean {
+  return ['srt', 'ass', 'ssa', 'vtt', 'lrc', 'ttml'].includes(ext)
 }

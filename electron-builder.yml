@@ -17,7 +17,6 @@ win:
     - target: nsis
       arch:
         - x64
-  signAndEditExecutable: false
 nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico

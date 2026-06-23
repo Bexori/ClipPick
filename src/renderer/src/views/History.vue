@@ -1,33 +1,51 @@
 <template>
-  <div class="history-page">
-    <div class="history-top">
-      <h2 class="history-heading">下载历史</h2>
-      <el-button
-        type="danger"
-        plain
-        :disabled="historyStore.entries.length === 0"
-        @click="handleClear"
-      >
-        清空全部
-      </el-button>
+  <div class="list-page">
+    <div class="list-page__header">
+      <div class="list-page__title-wrap">
+        <h2 class="list-page__title">下载历史</h2>
+        <p class="list-page__desc">查看已完成的下载记录，并执行打开位置、后处理或清理操作。</p>
+      </div>
+    </div>
+
+    <div class="list-page__toolbar">
+      <div class="list-page__summary">
+        <span class="list-page__count">{{ historyStore.entries.length }}</span>
+        <span class="list-page__label">条记录</span>
+      </div>
+      <div class="list-page__actions">
+        <el-button
+          type="danger"
+          plain
+          :disabled="historyStore.entries.length === 0"
+          @click="handleClear"
+        >
+          清空全部
+        </el-button>
+      </div>
+    </div>
+
+    <div v-if="!historyStore.loading && historyStore.entries.length === 0" class="list-page__empty">
+      <el-icon :size="28"><Clock /></el-icon>
+      <strong>暂无下载历史</strong>
+      <span>下载完成后的记录会显示在这里，方便继续打开位置或做后处理。</span>
     </div>
 
     <HistoryTable
+      v-else
       :entries="pagedEntries"
       :loading="historyStore.loading"
-      :show-header="false"
       @open-location="handleOpenLocation"
       @process="handleFileProcess"
       @delete="handleDelete"
     />
 
-    <div class="history-pagination" v-if="historyStore.entries.length > 0">
+    <div class="list-page__footer" v-if="historyStore.entries.length > 0">
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
         :page-sizes="[10, 20, 50, 100]"
         :total="historyStore.entries.length"
-        layout="sizes, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
         background
         small
       />
@@ -41,12 +59,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h, onMounted } from 'vue'
+import { computed, h, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Clock } from '@element-plus/icons-vue'
 import { useHistoryStore } from '../stores/history.store'
 import HistoryTable from '../components/HistoryTable.vue'
 import PostProcessDialog from '../components/PostProcessDialog.vue'
-import type { HistoryEntry } from '../../shared/types'
+import type { HistoryEntry } from '../../../shared/types'
 
 const historyStore = useHistoryStore()
 
@@ -120,14 +139,14 @@ async function handleDelete(row: HistoryEntry) {
   if (!deleteFile.value) {
     await historyStore.deleteEntry(row.id)
     adjustPageAfterDelete()
-    ElMessage.success('记录已删除（文件已保留）')
+    ElMessage.success('记录已删除，文件已保留')
     return
   }
 
   if (!row.filepath) {
     await historyStore.deleteEntry(row.id)
     adjustPageAfterDelete()
-    ElMessage.success('记录已删除（文件路径不存在）')
+    ElMessage.success('记录已删除，文件路径不存在')
     return
   }
 
@@ -136,7 +155,7 @@ async function handleDelete(row: HistoryEntry) {
     if (!existsResult.ok) {
       await historyStore.deleteEntry(row.id)
       adjustPageAfterDelete()
-      ElMessage.success('记录已删除（本地文件不存在）')
+      ElMessage.success('记录已删除，本地文件不存在')
       return
     }
   } catch {
@@ -187,37 +206,134 @@ async function handleClear() {
 </script>
 
 <style scoped>
-.history-page {
-  max-width: 1140px;
+.list-page {
+  width: 100%;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 20px 20px 16px;
+  padding: 20px clamp(16px, 2.4vw, 28px) 16px;
   height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 12px;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
-.history-top {
+.list-page__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 12px;
-  flex-shrink: 0;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.history-heading {
+.list-page__title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.list-page__title {
+  margin: 0;
   font-size: 22px;
   font-weight: 700;
   color: var(--vb-text);
-  margin: 0;
 }
 
-.history-pagination {
+.list-page__desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vb-text-secondary);
+}
+
+.list-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 0 2px;
+  flex-shrink: 0;
+}
+
+.list-page__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.list-page__count {
+  min-width: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--vb-bg-hover);
+  color: var(--vb-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.list-page__label {
+  color: var(--vb-text-secondary);
+  font-size: 13px;
+}
+
+.list-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.list-page__empty {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px;
+  border: 1px dashed var(--vb-border);
+  border-radius: 12px;
+  background: var(--vb-bg-surface);
+  color: var(--vb-text-secondary);
+  text-align: center;
+}
+
+.list-page__empty strong {
+  color: var(--vb-text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.list-page__empty span {
+  max-width: 420px;
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.list-page__footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 10px 0 0;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding: 6px 0 0;
   margin-top: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .list-page {
+    padding: 16px;
+  }
+
+  .list-page__footer {
+    justify-content: flex-start;
+  }
 }
 </style>

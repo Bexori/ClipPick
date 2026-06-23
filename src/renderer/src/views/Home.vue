@@ -16,11 +16,7 @@
           </template>
         </el-input>
         <el-tooltip content="从剪贴板粘贴" :show-after="500">
-          <el-button
-            size="large"
-            class="paste-btn"
-            @click="handlePaste"
-          >
+          <el-button size="large" class="paste-btn" @click="handlePaste">
             <el-icon :size="18"><CopyDocument /></el-icon>
           </el-button>
         </el-tooltip>
@@ -32,7 +28,7 @@
           class="parse-btn"
           @click="handleParse"
         >
-          {{ parsing ? '解析中...' : '解析' }}
+          {{ parsing ? "解析中..." : "解析" }}
         </el-button>
         <el-tooltip v-if="videoInfo" content="保存此链接" :show-after="500">
           <el-button
@@ -41,14 +37,18 @@
             :class="{ saved: isUrlSaved }"
             @click="toggleSavedUrl"
           >
-            <el-icon :size="18"><StarFilled v-if="isUrlSaved" /><Star v-else /></el-icon>
+            <el-icon :size="18"
+              ><StarFilled v-if="isUrlSaved" /><Star v-else
+            /></el-icon>
           </el-button>
         </el-tooltip>
       </div>
 
       <div class="platform-row">
         <span class="platform-label">支持</span>
-        <span v-for="p in platforms" :key="p" class="platform-badge">{{ p }}</span>
+        <span v-for="p in platforms" :key="p" class="platform-badge">{{
+          p
+        }}</span>
       </div>
     </div>
 
@@ -77,7 +77,9 @@
         <div class="playlist-header-left">
           <el-icon :size="18"><List /></el-icon>
           <span class="playlist-header-title">{{ playlistResult.title }}</span>
-          <el-tag size="small" round>{{ playlistResult.entryCount }} 个视频</el-tag>
+          <el-tag size="small" round
+            >{{ playlistResult.entryCount }} 个视频</el-tag
+          >
         </div>
         <div class="playlist-header-right">
           <el-tooltip content="复制列表链接" :show-after="500">
@@ -85,17 +87,19 @@
               <el-icon :size="16"><CopyDocument /></el-icon>
             </el-button>
           </el-tooltip>
-          <el-tooltip :content="isPlaylistSaved ? '已保存' : '保存列表'" :show-after="500">
-            <el-button
-              size="small"
-              text
-              circle
-              @click="togglePlaylistSaved"
-            >
-              <el-icon :size="16"><StarFilled v-if="isPlaylistSaved" /><Star v-else /></el-icon>
+          <el-tooltip
+            :content="isPlaylistSaved ? '已保存' : '保存列表'"
+            :show-after="500"
+          >
+            <el-button size="small" text circle @click="togglePlaylistSaved">
+              <el-icon :size="16"
+                ><StarFilled v-if="isPlaylistSaved" /><Star v-else
+              /></el-icon>
             </el-button>
           </el-tooltip>
-          <el-button text size="small" @click="clearPlaylist">关闭列表</el-button>
+          <el-button text size="small" @click="clearPlaylist"
+            >关闭列表</el-button
+          >
         </div>
       </div>
 
@@ -111,7 +115,11 @@
             :src="entry.thumbnail"
             class="entry-thumb"
             loading="lazy"
-            @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }"
+            @error="
+              (e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }
+            "
           />
           <div class="entry-thumb-placeholder" v-else>
             <el-icon :size="20"><VideoCamera /></el-icon>
@@ -120,8 +128,12 @@
             <span class="entry-title">{{ entry.title }}</span>
             <span class="entry-meta">
               <span class="entry-index">#{{ entry.index }}</span>
-              <span v-if="entry.duration" class="entry-duration">{{ formatDuration(entry.duration) }}</span>
-              <span v-if="entry.uploader" class="entry-uploader">{{ entry.uploader }}</span>
+              <span v-if="entry.duration" class="entry-duration">{{
+                formatDuration(entry.duration)
+              }}</span>
+              <span v-if="entry.uploader" class="entry-uploader">{{
+                entry.uploader
+              }}</span>
             </span>
           </div>
           <el-tooltip content="复制链接" :show-after="500">
@@ -183,7 +195,10 @@
 
         <div class="action-card">
           <label class="field-label">选择格式</label>
-          <FormatSelector v-model="entrySelectedFormat" :formats="entryVideoInfo.formats" />
+          <FormatSelector
+            v-model="entrySelectedFormat"
+            :formats="entryVideoInfo.formats"
+          />
           <SubtitleOptions
             v-if="entryVideoInfo.subtitles.length > 0"
             title="下载字幕"
@@ -236,7 +251,7 @@
             @click="downloadSelectedEntry"
           >
             <el-icon><Download /></el-icon>
-            {{ entrySelectedFormat ? '开始下载' : '请选择格式' }}
+            {{ entrySelectedFormat ? "开始下载" : "请选择格式" }}
           </el-button>
         </div>
       </template>
@@ -250,8 +265,15 @@
         <div class="playlist-bar-icon">
           <el-icon :size="18"><List /></el-icon>
         </div>
-        <span class="playlist-bar-text">检测到{{ playlistLabel }}，可加载全部视频供选择下载</span>
-        <el-button size="small" type="primary" :loading="loadingPlaylist" @click="loadPlaylist">
+        <span class="playlist-bar-text"
+          >检测到{{ playlistLabel }}，可加载全部视频供选择下载</span
+        >
+        <el-button
+          size="small"
+          type="primary"
+          :loading="loadingPlaylist"
+          @click="loadPlaylist"
+        >
           加载{{ playlistLabel }}
         </el-button>
       </div>
@@ -316,302 +338,381 @@
       </div>
     </template>
 
-    <DownloadList v-if="visibleTasks.length > 0" :tasks="visibleTasks" @retry="downloadStore.retryDownload" />
+    <DownloadList
+      v-if="visibleTasks.length > 0"
+      :tasks="visibleTasks"
+      @retry="downloadStore.retryDownload"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { ArrowLeft, ArrowRight, Close, CopyDocument, Download, Link, List, Star, StarFilled, VideoCamera, WarningFilled } from '@element-plus/icons-vue'
-import VideoInfo from '../components/VideoInfo.vue'
-import FormatSelector from '../components/FormatSelector.vue'
-import SubtitleOptions from '../components/SubtitleOptions.vue'
-import DownloadList from '../components/DownloadList.vue'
-import { useDownloadStore } from '../stores/download.store'
-import { useSettingsStore } from '../stores/settings.store'
-import { useSavedUrlsStore } from '../stores/saved-urls.store'
-import { isBilibiliUrl, isPlaylistUrl, getPlaylistLabel } from '../../../shared/url'
-import type { PlaylistParseResult, PlaylistEntry, VideoParseResult } from '../../../shared/types'
+import { computed, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
+import { ElMessage } from "element-plus";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Close,
+  CopyDocument,
+  Download,
+  Link,
+  List,
+  Star,
+  StarFilled,
+  VideoCamera,
+  WarningFilled,
+} from "@element-plus/icons-vue";
+import VideoInfo from "../components/VideoInfo.vue";
+import FormatSelector from "../components/FormatSelector.vue";
+import SubtitleOptions from "../components/SubtitleOptions.vue";
+import DownloadList from "../components/DownloadList.vue";
+import { useDownloadStore } from "../stores/download.store";
+import { useSettingsStore } from "../stores/settings.store";
+import { useSavedUrlsStore } from "../stores/saved-urls.store";
+import {
+  isBilibiliUrl,
+  isPlaylistUrl,
+  getPlaylistLabel,
+} from "../../../shared/url";
+import type {
+  PlaylistParseResult,
+  PlaylistEntry,
+  VideoParseResult,
+} from "../../../shared/types";
 
-const downloadStore = useDownloadStore()
-const settingsStore = useSettingsStore()
-const savedUrlsStore = useSavedUrlsStore()
-const route = useRoute()
+const downloadStore = useDownloadStore();
+const settingsStore = useSettingsStore();
+const savedUrlsStore = useSavedUrlsStore();
+const route = useRoute();
 
-const platforms = ['YouTube', 'Bilibili', 'TikTok', '抖音', 'Twitter/X', 'Instagram']
+const platforms = ["YouTube", "Bilibili", "TikTok", "Twitter/X", "Instagram"];
 
-const url = ref('')
-const parsing = ref(false)
-const error = ref('')
-const selectedFormat = ref('')
-const enableSubs = ref(false)
-const writeSubs = ref(true)
-const writeAutoSubs = ref(true)
-const selectedSubLangs = ref<string[]>([])
-const embedSubs = ref(false)
+const url = ref("");
+const parsing = ref(false);
+const error = ref("");
+const selectedFormat = ref("");
+const enableSubs = ref(false);
+const writeSubs = ref(true);
+const writeAutoSubs = ref(true);
+const selectedSubLangs = ref<string[]>([]);
+const embedSubs = ref(false);
 
 // Playlist state
-const playlistResult = ref<PlaylistParseResult | null>(null)
-const selectedEntry = ref<PlaylistEntry | null>(null)
-const entryParsing = ref(false)
-const entryError = ref('')
-const entryVideoInfo = ref<VideoParseResult | null>(null)
-const entrySelectedFormat = ref('')
-const entryEnableSubs = ref(false)
-const entryWriteSubs = ref(true)
-const entryWriteAutoSubs = ref(true)
-const entrySelectedSubLangs = ref<string[]>([])
-const entryEmbedSubs = ref(false)
-const biliExpiryWarningToken = ref('')
+const playlistResult = ref<PlaylistParseResult | null>(null);
+const selectedEntry = ref<PlaylistEntry | null>(null);
+const entryParsing = ref(false);
+const entryError = ref("");
+const entryVideoInfo = ref<VideoParseResult | null>(null);
+const entrySelectedFormat = ref("");
+const entryEnableSubs = ref(false);
+const entryWriteSubs = ref(true);
+const entryWriteAutoSubs = ref(true);
+const entrySelectedSubLangs = ref<string[]>([]);
+const entryEmbedSubs = ref(false);
+const biliExpiryWarningToken = ref("");
 
-const videoInfo = computed(() => downloadStore.videoInfo)
-const visibleTasks = computed(() => downloadStore.tasks)
+const videoInfo = computed(() => downloadStore.videoInfo);
+const visibleTasks = computed(() => downloadStore.tasks);
 
 const showPlaylistBar = computed(() => {
-  const currentUrl = url.value.trim()
-  if (!currentUrl || !videoInfo.value) return false
-  return isPlaylistUrl(currentUrl)
-})
+  const currentUrl = url.value.trim();
+  if (!currentUrl || !videoInfo.value) return false;
+  return isPlaylistUrl(currentUrl);
+});
 
 const playlistLabel = computed(() => {
-  return getPlaylistLabel(url.value.trim()) || '播放列表'
-})
+  return getPlaylistLabel(url.value.trim()) || "播放列表";
+});
 
-const canDownload = computed(() => Boolean(videoInfo.value && selectedFormat.value))
+const canDownload = computed(() =>
+  Boolean(videoInfo.value && selectedFormat.value),
+);
 const downloadButtonText = computed(() => {
-  if (!videoInfo.value) return '下载'
-  if (!selectedFormat.value) return '请选择格式'
-  return '开始下载'
-})
+  if (!videoInfo.value) return "下载";
+  if (!selectedFormat.value) return "请选择格式";
+  return "开始下载";
+});
 
-const loadingPlaylist = ref(false)
+const loadingPlaylist = ref(false);
 
 const isUrlSaved = computed(() => {
-  const currentUrl = url.value.trim()
-  if (!currentUrl) return false
-  return savedUrlsStore.entries.some(e => e.url === currentUrl)
-})
+  const currentUrl = url.value.trim();
+  if (!currentUrl) return false;
+  return savedUrlsStore.entries.some((e) => e.url === currentUrl);
+});
 
 const isPlaylistSaved = computed(() => {
-  const currentUrl = url.value.trim()
-  if (!currentUrl) return false
-  return savedUrlsStore.entries.some(e => e.url === currentUrl)
-})
+  const currentUrl = url.value.trim();
+  if (!currentUrl) return false;
+  return savedUrlsStore.entries.some((e) => e.url === currentUrl);
+});
 
 onMounted(async () => {
-  await settingsStore.loadFromLocal()
-  savedUrlsStore.loadSavedUrls()
+  await settingsStore.loadFromLocal();
+  savedUrlsStore.loadSavedUrls();
 
-  const queryUrl = route.query.url as string | undefined
+  const queryUrl = route.query.url as string | undefined;
   if (queryUrl) {
-    url.value = queryUrl
-    handleParse()
+    url.value = queryUrl;
+    handleParse();
   }
 
   try {
-    const recovered = await window.api.recoverUnfinished()
+    const recovered = await window.api.recoverUnfinished();
     if (recovered.length > 0) {
       for (const task of recovered) {
-        downloadStore.addTask(task)
+        downloadStore.addTask(task);
       }
-      ElMessage.info(`检测到 ${recovered.length} 个未完成的下载任务，可点击"重试"重新下载。`)
+      ElMessage.info(
+        `检测到 ${recovered.length} 个未完成的下载任务，可点击"重试"重新下载。`,
+      );
     }
-  } catch { /* recovery is best-effort */ }
-})
+  } catch {
+    /* recovery is best-effort */
+  }
+});
 
 function formatDuration(seconds: number): string {
-  if (!seconds || seconds <= 0) return ''
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = Math.floor(seconds % 60)
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  return `${m}:${String(s).padStart(2, '0')}`
+  if (!seconds || seconds <= 0) return "";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0)
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 async function handlePaste() {
   try {
-    const text = await navigator.clipboard.readText()
+    const text = await navigator.clipboard.readText();
     if (text.trim()) {
-      url.value = text.trim()
+      url.value = text.trim();
     }
   } catch {
-    ElMessage.warning('无法读取剪贴板，请手动粘贴')
+    ElMessage.warning("无法读取剪贴板，请手动粘贴");
   }
 }
 
 async function handleParse() {
-  if (!url.value.trim()) return
+  const currentUrl = url.value.trim();
+  if (!currentUrl) return;
 
-  if (isBilibiliUrl(url.value.trim())) {
+  parsing.value = true;
+  error.value = "";
+  resetSingleVideoState();
+  clearPlaylistState();
+
+  if (isBilibiliUrl(currentUrl)) {
     try {
-      const state = await window.api.getBiliState()
+      const state = await window.api.getBiliState();
       if (state.loggedIn && state.expired) {
-        const warningToken = state.expiresAt || 'expired-no-expiry'
+        const warningToken = state.expiresAt || "expired-no-expiry";
         if (biliExpiryWarningToken.value !== warningToken) {
-          biliExpiryWarningToken.value = warningToken
-          ElMessage.warning('B站 Cookie 已过期，可能无法获取高清画质。请前往设置 → B站 重新登录。')
+          biliExpiryWarningToken.value = warningToken;
+          ElMessage.warning(
+            "B站 Cookie 已过期，可能无法获取高清画质。请前往设置 → B站 重新登录。",
+          );
         }
       } else {
-        biliExpiryWarningToken.value = ''
+        biliExpiryWarningToken.value = "";
       }
-    } catch { /* best-effort check */ }
+    } catch {
+      /* best-effort check */
+    }
   }
 
   // Bilibili space/collection URLs go straight to playlist
-  if (isBilibiliSpaceUrl(url.value.trim())) {
-    parsing.value = false
-    await loadPlaylist()
-    return
+  if (isBilibiliSpaceUrl(currentUrl)) {
+    try {
+      await loadPlaylist(currentUrl);
+    } finally {
+      parsing.value = false;
+    }
+    return;
   }
 
-  parsing.value = true
-  error.value = ''
-  clearPlaylist()
-
   try {
-    const result = await window.api.parseVideo(url.value.trim())
-    downloadStore.setVideoInfo(result)
+    const result = await window.api.parseVideo(currentUrl);
+    downloadStore.setVideoInfo(result);
 
     if (result.formats.length > 0) {
-      selectedFormat.value = result.formats[0].formatId
+      selectedFormat.value = result.formats[0].formatId;
     }
   } catch (caughtError: unknown) {
-    if (isPlaylistUrl(url.value.trim())) {
-      parsing.value = false
-      await loadPlaylist()
-      return
+    if (isPlaylistUrl(currentUrl)) {
+      try {
+        await loadPlaylist(currentUrl);
+      } finally {
+        parsing.value = false;
+      }
+      return;
     }
-    error.value = caughtError instanceof Error ? caughtError.message : '解析失败'
-    downloadStore.setVideoInfo(null)
+    error.value =
+      caughtError instanceof Error ? caughtError.message : "解析失败";
+    downloadStore.setVideoInfo(null);
   } finally {
-    parsing.value = false
+    parsing.value = false;
   }
 }
 
 function isBilibiliSpaceUrl(input: string): boolean {
   try {
-    const hostname = new URL(input).hostname.toLowerCase()
-    return hostname === 'space.bilibili.com'
+    const hostname = new URL(input).hostname.toLowerCase();
+    return hostname === "space.bilibili.com";
   } catch {
-    return false
+    return false;
   }
 }
 
-async function loadPlaylist() {
-  const currentUrl = url.value.trim()
-  if (!currentUrl) return
+async function loadPlaylist(targetUrl = url.value.trim()) {
+  const currentUrl = targetUrl.trim();
+  if (!currentUrl) return;
 
-  loadingPlaylist.value = true
-  error.value = ''
-  playlistResult.value = null
-  selectedEntry.value = null
-  entryVideoInfo.value = null
-  entrySelectedFormat.value = ''
+  loadingPlaylist.value = true;
+  error.value = "";
+  resetSingleVideoState();
+  clearPlaylistState();
 
   try {
-    playlistResult.value = await window.api.parsePlaylist(currentUrl)
+    playlistResult.value = await window.api.parsePlaylist(currentUrl);
   } catch (caughtError: unknown) {
-    error.value = caughtError instanceof Error ? caughtError.message : '解析播放列表失败'
+    error.value =
+      caughtError instanceof Error ? caughtError.message : "解析播放列表失败";
   } finally {
-    loadingPlaylist.value = false
+    loadingPlaylist.value = false;
   }
 }
 
 function clearPlaylist() {
-  playlistResult.value = null
-  selectedEntry.value = null
-  entryVideoInfo.value = null
-  entrySelectedFormat.value = ''
-  entryError.value = ''
+  clearPlaylistState();
+}
+
+function clearPlaylistState() {
+  playlistResult.value = null;
+  selectedEntry.value = null;
+  entryVideoInfo.value = null;
+  entrySelectedFormat.value = "";
+  entryError.value = "";
+  resetEntrySubtitleState();
+}
+
+function resetSingleVideoState() {
+  downloadStore.setVideoInfo(null);
+  selectedFormat.value = "";
+  enableSubs.value = false;
+  writeSubs.value = true;
+  writeAutoSubs.value = true;
+  selectedSubLangs.value = [];
+  embedSubs.value = false;
+}
+
+function resetEntrySubtitleState() {
+  entryEnableSubs.value = false;
+  entryWriteSubs.value = true;
+  entryWriteAutoSubs.value = true;
+  entrySelectedSubLangs.value = [];
+  entryEmbedSubs.value = false;
 }
 
 async function copyPlaylistUrl() {
-  const currentUrl = url.value.trim()
-  if (!currentUrl) return
+  const currentUrl = url.value.trim();
+  if (!currentUrl) return;
   try {
-    await navigator.clipboard.writeText(currentUrl)
-    ElMessage.success('列表链接已复制')
+    await navigator.clipboard.writeText(currentUrl);
+    ElMessage.success("列表链接已复制");
   } catch {
-    ElMessage.warning('复制失败')
+    ElMessage.warning("复制失败");
   }
 }
 
 async function copyEntryUrl(entry: PlaylistEntry) {
   try {
-    await navigator.clipboard.writeText(entry.url)
-    ElMessage.success(`已复制 #${entry.index} 链接`)
+    await navigator.clipboard.writeText(entry.url);
+    ElMessage.success(`已复制 #${entry.index} 链接`);
   } catch {
-    ElMessage.warning('复制失败')
+    ElMessage.warning("复制失败");
   }
 }
 
 async function savePlaylist() {
-  const currentUrl = url.value.trim()
-  if (!currentUrl) return
+  const currentUrl = url.value.trim();
+  if (!currentUrl) return;
   await savedUrlsStore.addEntry({
     url: currentUrl,
     title: playlistResult.value?.title || playlistLabel.value,
-    thumbnail: playlistResult.value?.entries[0]?.thumbnail || '',
-    uploader: playlistResult.value?.uploader || ''
-  })
-  ElMessage.success('列表已保存')
+    thumbnail: playlistResult.value?.entries[0]?.thumbnail || "",
+    uploader: playlistResult.value?.uploader || "",
+  });
+  ElMessage.success("列表已保存");
 }
 
 async function togglePlaylistSaved() {
-  const currentUrl = url.value.trim()
-  if (!currentUrl) return
+  const currentUrl = url.value.trim();
+  if (!currentUrl) return;
 
   if (isPlaylistSaved.value) {
-    const removed = await savedUrlsStore.removeByUrl(currentUrl)
+    const removed = await savedUrlsStore.removeByUrl(currentUrl);
     if (removed) {
-      ElMessage.success('已取消收藏')
+      ElMessage.success("已取消收藏");
     }
-    return
+    return;
   }
 
-  await savePlaylist()
+  await savePlaylist();
 }
 
 async function selectEntry(entry: PlaylistEntry) {
-  selectedEntry.value = entry
-  entryParsing.value = true
-  entryError.value = ''
-  entryVideoInfo.value = null
-  entrySelectedFormat.value = ''
+  selectedEntry.value = entry;
+  entryParsing.value = true;
+  entryError.value = "";
+  entryVideoInfo.value = null;
+  entrySelectedFormat.value = "";
+  resetEntrySubtitleState();
 
   try {
-    entryVideoInfo.value = await window.api.parseVideo(entry.url)
+    entryVideoInfo.value = await window.api.parseVideo(entry.url);
     if (entryVideoInfo.value.formats.length > 0) {
-      entrySelectedFormat.value = entryVideoInfo.value.formats[0].formatId
+      entrySelectedFormat.value = entryVideoInfo.value.formats[0].formatId;
     }
   } catch (caughtError: unknown) {
-    entryError.value = caughtError instanceof Error ? caughtError.message : '解析失败'
+    entryError.value =
+      caughtError instanceof Error ? caughtError.message : "解析失败";
   } finally {
-    entryParsing.value = false
+    entryParsing.value = false;
   }
 }
 
 function backToPlaylist() {
-  selectedEntry.value = null
-  entryVideoInfo.value = null
-  entrySelectedFormat.value = ''
-  entryError.value = ''
+  selectedEntry.value = null;
+  entryVideoInfo.value = null;
+  entrySelectedFormat.value = "";
+  entryError.value = "";
+  resetEntrySubtitleState();
 }
 
 async function downloadSelectedEntry() {
-  if (!entryVideoInfo.value || !entrySelectedFormat.value || !selectedEntry.value) return
+  if (
+    !entryVideoInfo.value ||
+    !entrySelectedFormat.value ||
+    !selectedEntry.value
+  )
+    return;
 
-  const sourceUrl = (entryVideoInfo.value.webpageUrl || selectedEntry.value.url).trim()
-  const format = entryVideoInfo.value.formats.find(item => item.formatId === entrySelectedFormat.value)
+  const sourceUrl = (
+    entryVideoInfo.value.webpageUrl || selectedEntry.value.url
+  ).trim();
+  const format = entryVideoInfo.value.formats.find(
+    (item) => item.formatId === entrySelectedFormat.value,
+  );
   const formatLabel = format
-    ? `${format.height > 0 ? `${format.height}p` : 'audio'} ${format.ext.toUpperCase()}`
-    : entrySelectedFormat.value
+    ? `${format.height > 0 ? `${format.height}p` : "audio"} ${format.ext.toUpperCase()}`
+    : entrySelectedFormat.value;
 
-  const subLangsValue = entryEnableSubs.value && entrySelectedSubLangs.value.length > 0
-    ? entrySelectedSubLangs.value.join(',')
-    : undefined
+  const subLangsValue =
+    entryEnableSubs.value && entrySelectedSubLangs.value.length > 0
+      ? entrySelectedSubLangs.value.join(",")
+      : undefined;
 
   const taskId = await window.api.startDownload({
     url: sourceUrl,
@@ -622,8 +723,8 @@ async function downloadSelectedEntry() {
     writeSubs: entryEnableSubs.value && entryWriteSubs.value,
     writeAutoSubs: entryEnableSubs.value && entryWriteAutoSubs.value,
     subLangs: subLangsValue,
-    embedSubs: entryEnableSubs.value && entryEmbedSubs.value
-  })
+    embedSubs: entryEnableSubs.value && entryEmbedSubs.value,
+  });
 
   downloadStore.addTask({
     taskId,
@@ -635,36 +736,39 @@ async function downloadSelectedEntry() {
     formatLabel,
     outputDir: settingsStore.defaultSavePath,
     filename: entryVideoInfo.value.title,
-    status: 'queued',
+    status: "queued",
     progress: 0,
-    speed: '',
-    eta: '',
+    speed: "",
+    eta: "",
     downloadedBytes: 0,
     totalBytes: 0,
     retryCount: 0,
     maxRetries: settingsStore.autoRetryCount,
-    createdAt: new Date().toISOString()
-  })
+    createdAt: new Date().toISOString(),
+  });
 
-  ElMessage.success('已添加到下载队列')
+  ElMessage.success("已添加到下载队列");
 }
 
 async function handleDownload() {
-  if (!videoInfo.value || !selectedFormat.value) return
-  const sourceUrl = (videoInfo.value.webpageUrl || url.value).trim()
+  if (!videoInfo.value || !selectedFormat.value) return;
+  const sourceUrl = (videoInfo.value.webpageUrl || url.value).trim();
   if (!sourceUrl) {
-    ElMessage.error('下载失败：视频链接为空，请重新解析链接')
-    return
+    ElMessage.error("下载失败：视频链接为空，请重新解析链接");
+    return;
   }
 
-  const format = videoInfo.value.formats.find(item => item.formatId === selectedFormat.value)
+  const format = videoInfo.value.formats.find(
+    (item) => item.formatId === selectedFormat.value,
+  );
   const formatLabel = format
-    ? `${format.height > 0 ? `${format.height}p` : 'audio'} ${format.ext.toUpperCase()}`
-    : selectedFormat.value
+    ? `${format.height > 0 ? `${format.height}p` : "audio"} ${format.ext.toUpperCase()}`
+    : selectedFormat.value;
 
-  const subLangsValue = enableSubs.value && selectedSubLangs.value.length > 0
-    ? selectedSubLangs.value.join(',')
-    : undefined
+  const subLangsValue =
+    enableSubs.value && selectedSubLangs.value.length > 0
+      ? selectedSubLangs.value.join(",")
+      : undefined;
 
   const taskId = await window.api.startDownload({
     url: sourceUrl,
@@ -675,8 +779,8 @@ async function handleDownload() {
     writeSubs: enableSubs.value && writeSubs.value,
     writeAutoSubs: enableSubs.value && writeAutoSubs.value,
     subLangs: subLangsValue,
-    embedSubs: enableSubs.value && embedSubs.value
-  })
+    embedSubs: enableSubs.value && embedSubs.value,
+  });
 
   downloadStore.addTask({
     taskId,
@@ -688,53 +792,54 @@ async function handleDownload() {
     formatLabel,
     outputDir: settingsStore.defaultSavePath,
     filename: videoInfo.value.title,
-    status: 'queued',
+    status: "queued",
     progress: 0,
-    speed: '',
-    eta: '',
+    speed: "",
+    eta: "",
     downloadedBytes: 0,
     totalBytes: 0,
     retryCount: 0,
     maxRetries: settingsStore.autoRetryCount,
-    createdAt: new Date().toISOString()
-  })
+    createdAt: new Date().toISOString(),
+  });
 
-  ElMessage.success('已添加到下载队列')
+  ElMessage.success("已添加到下载队列");
 }
 
 async function toggleSavedUrl() {
-  const currentUrl = (videoInfo.value?.webpageUrl || url.value.trim()).trim()
-  if (!currentUrl) return
+  const currentUrl = (videoInfo.value?.webpageUrl || url.value.trim()).trim();
+  if (!currentUrl) return;
 
   if (isUrlSaved.value) {
-    const removed = await savedUrlsStore.removeByUrl(currentUrl)
+    const removed = await savedUrlsStore.removeByUrl(currentUrl);
     if (removed) {
-      ElMessage.success('已取消收藏')
+      ElMessage.success("已取消收藏");
     }
-    return
+    return;
   }
 
-  await handleSaveUrl()
+  await handleSaveUrl();
 }
 
 async function handleSaveUrl() {
-  if (!videoInfo.value) return
+  if (!videoInfo.value) return;
   await savedUrlsStore.addEntry({
     url: videoInfo.value.webpageUrl || url.value.trim(),
     title: videoInfo.value.title,
     thumbnail: videoInfo.value.thumbnail,
-    uploader: videoInfo.value.uploader
-  })
-  ElMessage.success('链接已保存')
+    uploader: videoInfo.value.uploader,
+  });
+  ElMessage.success("链接已保存");
 }
-
 </script>
 
 <style scoped>
 .home-page {
-  max-width: 860px;
+  width: 100%;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 40px 28px 48px;
+  padding: 32px clamp(18px, 3vw, 36px) 48px;
+  box-sizing: border-box;
 }
 
 .parse-section {
@@ -767,6 +872,7 @@ async function handleSaveUrl() {
 .url-input-row {
   display: flex;
   gap: 8px;
+  align-items: stretch;
 }
 
 .url-input {
@@ -816,7 +922,9 @@ async function handleSaveUrl() {
   color: #dc2626;
   cursor: pointer;
   padding: 0;
-  transition: background var(--vb-transition), border-color var(--vb-transition);
+  transition:
+    background var(--vb-transition),
+    border-color var(--vb-transition);
 }
 
 .error-close:hover {
@@ -861,13 +969,24 @@ async function handleSaveUrl() {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-.w-70 { width: 70%; }
-.w-50 { width: 50%; }
-.w-40 { width: 40%; }
+.w-70 {
+  width: 70%;
+}
+.w-50 {
+  width: 50%;
+}
+.w-40 {
+  width: 40%;
+}
 
 @keyframes shimmer {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* ===== Playlist list ===== */
@@ -875,6 +994,8 @@ async function handleSaveUrl() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 14px 16px;
   margin-bottom: 12px;
   background: var(--vb-bg-surface);
@@ -893,6 +1014,8 @@ async function handleSaveUrl() {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .playlist-header-title {
@@ -917,7 +1040,9 @@ async function handleSaveUrl() {
   border: 1px solid var(--vb-border);
   border-radius: var(--vb-radius-sm);
   cursor: pointer;
-  transition: background var(--vb-transition), border-color var(--vb-transition);
+  transition:
+    background var(--vb-transition),
+    border-color var(--vb-transition);
 }
 
 .playlist-entry:hover {
@@ -966,6 +1091,7 @@ async function handleSaveUrl() {
 .entry-meta {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
   font-size: 11px;
   color: var(--vb-text-tertiary);
 }
@@ -1008,6 +1134,7 @@ async function handleSaveUrl() {
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+  min-width: 0;
 }
 
 .entry-detail-thumb {
@@ -1067,6 +1194,7 @@ async function handleSaveUrl() {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   padding: 12px 16px;
   margin-bottom: 16px;
   background: var(--vb-accent-bg);
@@ -1081,6 +1209,7 @@ async function handleSaveUrl() {
 
 .playlist-bar-text {
   flex: 1;
+  min-width: 220px;
   font-size: 13px;
   color: var(--vb-text-secondary);
   line-height: 1.4;
@@ -1100,6 +1229,12 @@ async function handleSaveUrl() {
   opacity: 0.7;
 }
 
+@media (max-width: 960px) {
+  .home-page {
+    max-width: none;
+  }
+}
+
 @media (max-width: 700px) {
   .home-page {
     padding: 24px 16px;
@@ -1107,6 +1242,30 @@ async function handleSaveUrl() {
 
   .url-input-row {
     flex-direction: column;
+  }
+
+  .playlist-header-right,
+  .playlist-bar {
+    width: 100%;
+  }
+
+  .entry-detail-header {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .playlist-header-left,
+  .entry-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .entry-detail-thumb {
+    width: 100%;
+    max-width: 220px;
+    height: auto;
+    aspect-ratio: 16 / 9;
   }
 }
 </style>

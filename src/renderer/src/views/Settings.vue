@@ -922,12 +922,13 @@ watch(
 .settings-page {
   height: 100%;
   min-height: 100%;
-  padding: 18px 18px 20px;
+  padding: 18px clamp(14px, 2.2vw, 24px) 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   background: var(--vb-bg);
   color: var(--vb-text);
+  box-sizing: border-box;
 }
 
 .settings-content {
@@ -938,12 +939,13 @@ watch(
 }
 
 .content-inner {
-  max-width: 940px;
+  width: 100%;
+  max-width: 1240px;
   padding: 4px 0 8px;
 }
 
 .settings-section {
-  padding: 0 18px 8px 22px;
+  padding: 0 clamp(6px, 1.6vw, 18px) 8px clamp(8px, 1.8vw, 22px);
 }
 
 .section-header {
@@ -962,7 +964,7 @@ watch(
 
 .setting-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(300px, 420px);
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 460px);
   gap: 18px;
   align-items: center;
   padding: 12px 0;
@@ -990,6 +992,7 @@ watch(
 .setting-control {
   display: flex;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .control-field {
@@ -1004,6 +1007,7 @@ watch(
 .path-control {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   width: 100%;
 }
@@ -1097,6 +1101,7 @@ watch(
 
 .translate-list {
   border-top: 1px solid var(--vb-border-light);
+  overflow-x: auto;
 }
 
 .empty-state {
@@ -1111,6 +1116,7 @@ watch(
   grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 120px 150px;
   gap: 12px;
   align-items: center;
+  min-width: 720px;
 }
 
 .translate-head {
@@ -1214,6 +1220,7 @@ watch(
 .drawer-footer {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -1244,9 +1251,7 @@ watch(
 }
 
 @media (max-width: 1120px) {
-  .setting-row,
-  .translate-head,
-  .translate-row {
+  .setting-row {
     grid-template-columns: 1fr;
   }
 
@@ -1263,6 +1268,51 @@ watch(
 
   .content-inner {
     max-width: none;
+  }
+
+  .translate-head,
+  .translate-row {
+    min-width: 680px;
+  }
+}
+
+@media (max-width: 820px) {
+  .settings-page {
+    padding: 14px 12px 18px;
+  }
+
+  .settings-section {
+    padding: 0 4px 8px;
+  }
+
+  .bili-status__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .path-control > * {
+    width: 100%;
+  }
+
+  .path-control :deep(.el-button),
+  .inline-actions :deep(.el-button) {
+    min-width: 0;
+  }
+
+  .qr-dialog__canvas {
+    width: min(220px, 100%);
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .translate-head,
+  .translate-row {
+    min-width: 620px;
+  }
+
+  .drawer-footer {
+    justify-content: flex-start;
   }
 }
 </style>

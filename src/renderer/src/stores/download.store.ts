@@ -16,6 +16,10 @@ export const useDownloadStore = defineStore('download', () => {
   )
 
   function addTask(task: DownloadTask) {
+    const existingIndex = tasks.value.findIndex(item => item.taskId === task.taskId)
+    if (existingIndex !== -1) {
+      tasks.value.splice(existingIndex, 1)
+    }
     tasks.value.unshift(task)
   }
 
@@ -40,7 +44,7 @@ export const useDownloadStore = defineStore('download', () => {
     if (!task.url.trim()) {
       updateTask(taskId, {
         status: 'error',
-        error: '重试失败：任务链接为空，请重新解析后下载'
+        error: 'Retry failed: task URL is empty. Parse the link again before downloading'
       })
       return
     }
@@ -70,10 +74,10 @@ export const useDownloadStore = defineStore('download', () => {
       completedAt: undefined
     })
 
-    if (!automatic) ElMessage.success('已重新加入下载队列')
+    if (!automatic) ElMessage.success('Task requeued')
   }
 
-  // IPC listeners — registered once on store creation, persist across page navigations
+  // IPC listeners registered once on store creation and kept across page navigations
   window.api.onDownloadProgress((data: ProgressPayload) => {
     updateTask(data.taskId, {
       status: data.status === 'post-processing' ? 'post-processing' : 'downloading',
@@ -102,18 +106,19 @@ export const useDownloadStore = defineStore('download', () => {
         videoId: task.videoId,
         title: task.title,
         thumbnail: task.thumbnail,
-        url: task.url,
         formatLabel: task.formatLabel,
         filepath: data.filepath,
         filesize: data.filesize,
         duration: 0,
         status: 'completed',
-        downloadedAt: new Date().toISOString()
+        downloadedAt: new Date().toISOString(),
+        subtitleFiles: data.subtitleFiles ?? [],
+        subtitleStatus: data.subtitleStatus ?? 'none'
       })
     }
 
     if (settingsStore.downloadNotifications) {
-      ElMessage.success(`${task?.title ?? '视频'} 下载完成`)
+      ElMessage.success(`${task?.title ?? 'Video'} download complete`)
     }
     window.setTimeout(() => {
       removeTask(data.taskId)

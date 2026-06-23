@@ -94,6 +94,7 @@ export interface SubtitleInfo {
   lang: string
   label: string
   kind: 'manual' | 'auto'
+  embeddable: boolean
 }
 
 export interface PlaylistEntry {
@@ -209,6 +210,8 @@ export interface CompletePayload {
   taskId: string
   filepath: string
   filesize: number
+  subtitleFiles?: string[]
+  subtitleStatus?: 'none' | 'external' | 'embedded' | 'embed-failed'
 }
 
 export interface ErrorPayload {
@@ -278,6 +281,8 @@ export interface HistoryEntry {
   duration: number
   status: 'completed' | 'cancelled' | 'error'
   downloadedAt: string
+  subtitleFiles?: string[]
+  subtitleStatus?: 'none' | 'external' | 'embedded' | 'embed-failed'
   errorMessage?: string
 }
 

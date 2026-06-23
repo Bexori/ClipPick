@@ -1,23 +1,41 @@
 <template>
-  <div class="saved-urls-page">
-    <div class="saved-top">
-      <h2 class="saved-heading">收藏</h2>
-      <el-button
-        type="danger"
-        plain
-        :disabled="savedUrlsStore.entries.length === 0"
-        @click="handleClearAll"
-      >
-        清空全部
-      </el-button>
+  <div class="list-page">
+    <div class="list-page__header">
+      <div class="list-page__title-wrap">
+        <h2 class="list-page__title">收藏</h2>
+        <p class="list-page__desc">保存常用链接，后续可以快速回到首页重新解析、复制或移除收藏。</p>
+      </div>
     </div>
 
-    <div class="saved-table-wrap">
+    <div class="list-page__toolbar">
+      <div class="list-page__summary">
+        <span class="list-page__count">{{ savedUrlsStore.entries.length }}</span>
+        <span class="list-page__label">条收藏</span>
+      </div>
+      <div class="list-page__actions">
+        <el-button
+          type="danger"
+          plain
+          :disabled="savedUrlsStore.entries.length === 0"
+          @click="handleClearAll"
+        >
+          清空全部
+        </el-button>
+      </div>
+    </div>
+
+    <div v-if="!savedUrlsStore.loading && savedUrlsStore.entries.length === 0" class="list-page__empty">
+      <el-icon :size="28"><Star /></el-icon>
+      <strong>暂无收藏内容</strong>
+      <span>在首页把链接加入收藏后，会统一显示在这里，方便后续再次解析或复制。</span>
+    </div>
+
+    <div v-else class="saved-table-wrap">
       <el-table
         :data="pagedEntries"
         v-loading="savedUrlsStore.loading"
         stripe
-        :show-header="false"
+        :show-header="true"
         empty-text="暂无已保存的链接"
         row-key="id"
         size="default"
@@ -34,27 +52,36 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="title" label="标题" min-width="260" show-overflow-tooltip header-align="center" />
+        <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip header-align="center" />
+        <el-table-column prop="uploader" label="上传者" min-width="140" show-overflow-tooltip header-align="center" />
+        <el-table-column prop="url" label="链接" min-width="220" show-overflow-tooltip header-align="center" />
 
-        <el-table-column label="操作" width="240" fixed="right" header-align="center">
+        <el-table-column label="保存时间" width="160" header-align="center">
           <template #default="{ row }">
-            <div class="action-btns">
-              <el-button size="small" type="primary" @click="handleOpen(row)">解析</el-button>
-              <el-button size="small" plain @click="handleCopy(row)">复制</el-button>
-              <el-button size="small" plain type="danger" @click="handleDelete(row.id)">取消收藏</el-button>
-            </div>
+            <span class="meta-text">{{ formatDate(row.savedAt) }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" width="64" header-align="center">
+          <template #default="{ row }">
+            <SavedUrlActionDropdown
+              :row="row"
+              @open="handleOpen"
+              @copy="handleCopy"
+              @delete="handleDeleteByRow"
+            />
           </template>
         </el-table-column>
       </el-table>
     </div>
 
-    <div class="saved-pagination" v-if="savedUrlsStore.entries.length > 0">
+    <div class="list-page__footer" v-if="savedUrlsStore.entries.length > 0">
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
         :page-sizes="[10, 20, 50, 100]"
         :total="savedUrlsStore.entries.length"
-        layout="sizes, prev, pager, next"
+        layout="total, sizes, prev, pager, next"
         background
         small
       />
@@ -66,7 +93,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { VideoCamera } from '@element-plus/icons-vue'
+import { Star, VideoCamera } from '@element-plus/icons-vue'
+import SavedUrlActionDropdown from '../components/SavedUrlActionDropdown.vue'
 import { useSavedUrlsStore } from '../stores/saved-urls.store'
 import type { SavedUrlEntry } from '../../../shared/types'
 
@@ -116,6 +144,10 @@ async function handleDelete(id: string) {
   }
 }
 
+function handleDeleteByRow(entry: SavedUrlEntry) {
+  return handleDelete(entry.id)
+}
+
 async function handleClearAll() {
   try {
     await ElMessageBox.confirm('确定清空所有收藏吗？此操作不可撤销。', '提示', {
@@ -132,32 +164,124 @@ async function handleClearAll() {
     // cancelled
   }
 }
+
+function formatDate(iso: string): string {
+  if (!iso) return '--'
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 </script>
 
 <style scoped>
-.saved-urls-page {
-  max-width: 1140px;
+.list-page {
+  width: 100%;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 20px 20px 16px;
+  padding: 20px clamp(16px, 2.4vw, 28px) 16px;
   height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 12px;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
-.saved-top {
+.list-page__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 12px;
-  flex-shrink: 0;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.saved-heading {
+.list-page__title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.list-page__title {
+  margin: 0;
   font-size: 22px;
   font-weight: 700;
   color: var(--vb-text);
+}
+
+.list-page__desc {
   margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vb-text-secondary);
+}
+
+.list-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 0 2px;
+  flex-shrink: 0;
+}
+
+.list-page__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.list-page__count {
+  min-width: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--vb-bg-hover);
+  color: var(--vb-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.list-page__label {
+  color: var(--vb-text-secondary);
+  font-size: 13px;
+}
+
+.list-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.list-page__empty {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px;
+  border: 1px dashed var(--vb-border);
+  border-radius: 12px;
+  background: var(--vb-bg-surface);
+  color: var(--vb-text-secondary);
+  text-align: center;
+}
+
+.list-page__empty strong {
+  color: var(--vb-text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.list-page__empty span {
+  max-width: 420px;
+  line-height: 1.6;
+  font-size: 13px;
 }
 
 .saved-table-wrap {
@@ -187,20 +311,29 @@ async function handleClearAll() {
   border-radius: 6px;
 }
 
-.action-btns {
-  display: flex;
-  gap: 6px;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  white-space: nowrap;
+.meta-text {
+  color: var(--vb-text-secondary);
+  font-size: 13px;
 }
 
-.saved-pagination {
+.list-page__footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 10px 0 0;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding: 6px 0 0;
   margin-top: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .list-page {
+    padding: 16px;
+  }
+
+  .list-page__footer {
+    justify-content: flex-start;
+  }
 }
 </style>

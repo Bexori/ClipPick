@@ -64,6 +64,11 @@ export class HistoryService {
         if (fs.existsSync(entry.filepath)) {
           fs.unlinkSync(entry.filepath)
         }
+        for (const subtitleFile of entry.subtitleFiles ?? []) {
+          if (subtitleFile && fs.existsSync(subtitleFile)) {
+            fs.unlinkSync(subtitleFile)
+          }
+        }
         // also try removing the parent directory if empty
         const parent = path.dirname(entry.filepath)
         if (fs.existsSync(parent) && fs.readdirSync(parent).length === 0) {
@@ -81,6 +86,9 @@ export class HistoryService {
     for (const entry of this.entries) {
       if (entry.filepath) {
         try { fs.unlinkSync(entry.filepath) } catch { /* ignore */ }
+      }
+      for (const subtitleFile of entry.subtitleFiles ?? []) {
+        try { if (subtitleFile) fs.unlinkSync(subtitleFile) } catch { /* ignore */ }
       }
     }
     this.entries = []
