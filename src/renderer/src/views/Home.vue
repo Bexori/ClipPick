@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="home-page">
     <div class="parse-section">
       <div class="url-input-row">
@@ -30,7 +30,7 @@
         >
           {{ parsing ? "解析中..." : "解析" }}
         </el-button>
-        <el-tooltip v-if="videoInfo" content="保存此链接" :show-after="500">
+        <el-tooltip v-if="videoInfo" content="保存当前链接" :show-after="500">
           <el-button
             size="large"
             class="save-btn"
@@ -43,7 +43,6 @@
           </el-button>
         </el-tooltip>
       </div>
-
       <div class="platform-row">
         <span class="platform-label">支持</span>
         <span v-for="p in platforms" :key="p" class="platform-badge">{{
@@ -51,7 +50,6 @@
         }}</span>
       </div>
     </div>
-
     <div v-if="error" class="error-bar">
       <el-icon><WarningFilled /></el-icon>
       <span>{{ error }}</span>
@@ -59,7 +57,6 @@
         <el-icon :size="14"><Close /></el-icon>
       </button>
     </div>
-
     <div v-if="parsing" class="skeleton-card">
       <div class="skeleton-row">
         <div class="skeleton-thumb"></div>
@@ -70,25 +67,22 @@
         </div>
       </div>
     </div>
-
     <!-- ===== Playlist view ===== -->
     <template v-if="playlistResult && !selectedEntry">
       <div class="playlist-header">
         <div class="playlist-header-left">
           <el-icon :size="18"><List /></el-icon>
           <span class="playlist-header-title">{{ playlistResult.title }}</span>
-          <el-tag size="small" round
-            >{{ playlistResult.entryCount }} 个视频</el-tag
-          >
+          <el-tag size="small" round>{{ playlistResult.entryCount }} 个视频</el-tag>
         </div>
         <div class="playlist-header-right">
-          <el-tooltip content="复制列表链接" :show-after="500">
+          <el-tooltip content="复制合集链接" :show-after="500">
             <el-button size="small" text circle @click.stop="copyPlaylistUrl">
               <el-icon :size="16"><CopyDocument /></el-icon>
             </el-button>
           </el-tooltip>
           <el-tooltip
-            :content="isPlaylistSaved ? '已保存' : '保存列表'"
+            :content="isPlaylistSaved ? '已收藏' : '收藏合集'"
             :show-after="500"
           >
             <el-button size="small" text circle @click="togglePlaylistSaved">
@@ -102,7 +96,6 @@
           >
         </div>
       </div>
-
       <div class="playlist-entries">
         <div
           v-for="entry in playlistResult.entries"
@@ -151,14 +144,12 @@
         </div>
       </div>
     </template>
-
     <!-- ===== Selected entry detail ===== -->
     <template v-if="selectedEntry">
       <div class="entry-detail-back" @click="backToPlaylist">
         <el-icon :size="16"><ArrowLeft /></el-icon>
         <span>返回列表</span>
       </div>
-
       <div class="entry-detail-header">
         <img
           v-if="selectedEntry.thumbnail"
@@ -170,7 +161,6 @@
           <span class="entry-detail-title">{{ selectedEntry.title }}</span>
         </div>
       </div>
-
       <div v-if="entryParsing" class="skeleton-card">
         <div class="skeleton-row">
           <div class="skeleton-thumb"></div>
@@ -181,7 +171,6 @@
           </div>
         </div>
       </div>
-
       <div v-else-if="entryError" class="error-bar">
         <el-icon><WarningFilled /></el-icon>
         <span>{{ entryError }}</span>
@@ -189,10 +178,8 @@
           <el-icon :size="14"><Close /></el-icon>
         </button>
       </div>
-
       <template v-if="entryVideoInfo && !entryParsing">
         <VideoInfo :info="entryVideoInfo" />
-
         <div class="action-card">
           <label class="field-label">选择格式</label>
           <FormatSelector
@@ -202,7 +189,7 @@
           <SubtitleOptions
             v-if="entryVideoInfo.subtitles.length > 0"
             title="下载字幕"
-            hint="优先选择字幕类型和语言，支持嵌入视频。"
+            hint="优先选择字幕类型和语言，支持封装为内嵌字幕轨。"
             :subtitles="entryVideoInfo.subtitles"
             v-model:enabled="entryEnableSubs"
             v-model:write-subs="entryWriteSubs"
@@ -210,16 +197,15 @@
             v-model:embed-subs="entryEmbedSubs"
             v-model:selected-langs="entrySelectedSubLangs"
           />
-
           <div v-if="entryVideoInfo.subtitles.length > 0" class="subs-section">
             <el-checkbox v-model="entryEnableSubs" class="subs-toggle">
-              下载字幕
+              涓嬭浇瀛楀箷
             </el-checkbox>
             <div v-if="entryEnableSubs" class="subs-options">
               <div class="subs-row">
                 <el-checkbox v-model="entryWriteSubs">手动字幕</el-checkbox>
                 <el-checkbox v-model="entryWriteAutoSubs">自动字幕</el-checkbox>
-                <el-checkbox v-model="entryEmbedSubs">嵌入视频</el-checkbox>
+                <el-checkbox v-model="entryEmbedSubs">封装为内嵌字幕轨</el-checkbox>
               </div>
               <div class="subs-lang-row">
                 <span class="subs-lang-label">语言</span>
@@ -242,7 +228,6 @@
               </div>
             </div>
           </div>
-
           <el-button
             type="primary"
             size="large"
@@ -256,11 +241,9 @@
         </div>
       </template>
     </template>
-
     <!-- ===== Single video (non-playlist) ===== -->
     <template v-if="videoInfo && !parsing && !playlistResult && !selectedEntry">
       <VideoInfo :info="videoInfo" />
-
       <div v-if="showPlaylistBar" class="playlist-bar">
         <div class="playlist-bar-icon">
           <el-icon :size="18"><List /></el-icon>
@@ -274,17 +257,16 @@
           :loading="loadingPlaylist"
           @click="loadPlaylist"
         >
-          加载{{ playlistLabel }}
+          鍔犺浇{{ playlistLabel }}
         </el-button>
       </div>
-
       <div class="action-card">
         <label class="field-label">选择格式</label>
         <FormatSelector v-model="selectedFormat" :formats="videoInfo.formats" />
         <SubtitleOptions
           v-if="videoInfo.subtitles.length > 0"
           title="下载字幕"
-          hint="优先选择字幕类型和语言，支持嵌入视频。"
+          hint="优先选择字幕类型和语言，支持封装为内嵌字幕轨。"
           :subtitles="videoInfo.subtitles"
           v-model:enabled="enableSubs"
           v-model:write-subs="writeSubs"
@@ -292,16 +274,15 @@
           v-model:embed-subs="embedSubs"
           v-model:selected-langs="selectedSubLangs"
         />
-
         <div v-if="videoInfo.subtitles.length > 0" class="subs-section">
           <el-checkbox v-model="enableSubs" class="subs-toggle">
-            下载字幕
+            涓嬭浇瀛楀箷
           </el-checkbox>
           <div v-if="enableSubs" class="subs-options">
             <div class="subs-row">
               <el-checkbox v-model="writeSubs">手动字幕</el-checkbox>
               <el-checkbox v-model="writeAutoSubs">自动字幕</el-checkbox>
-              <el-checkbox v-model="embedSubs">嵌入视频</el-checkbox>
+              <el-checkbox v-model="embedSubs">封装为内嵌字幕轨</el-checkbox>
             </div>
             <div class="subs-lang-row">
               <span class="subs-lang-label">语言</span>
@@ -324,7 +305,6 @@
             </div>
           </div>
         </div>
-
         <el-button
           type="primary"
           size="large"
@@ -337,7 +317,6 @@
         </el-button>
       </div>
     </template>
-
     <DownloadList
       v-if="visibleTasks.length > 0"
       :tasks="visibleTasks"
@@ -345,7 +324,6 @@
     />
   </div>
 </template>
-
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
@@ -380,14 +358,11 @@ import type {
   PlaylistEntry,
   VideoParseResult,
 } from "../../../shared/types";
-
 const downloadStore = useDownloadStore();
 const settingsStore = useSettingsStore();
 const savedUrlsStore = useSavedUrlsStore();
 const route = useRoute();
-
 const platforms = ["YouTube", "Bilibili", "TikTok", "Twitter/X", "Instagram"];
-
 const url = ref("");
 const parsing = ref(false);
 const error = ref("");
@@ -397,7 +372,6 @@ const writeSubs = ref(true);
 const writeAutoSubs = ref(true);
 const selectedSubLangs = ref<string[]>([]);
 const embedSubs = ref(false);
-
 // Playlist state
 const playlistResult = ref<PlaylistParseResult | null>(null);
 const selectedEntry = ref<PlaylistEntry | null>(null);
@@ -411,20 +385,16 @@ const entryWriteAutoSubs = ref(true);
 const entrySelectedSubLangs = ref<string[]>([]);
 const entryEmbedSubs = ref(false);
 const biliExpiryWarningToken = ref("");
-
 const videoInfo = computed(() => downloadStore.videoInfo);
 const visibleTasks = computed(() => downloadStore.tasks);
-
 const showPlaylistBar = computed(() => {
   const currentUrl = url.value.trim();
   if (!currentUrl || !videoInfo.value) return false;
   return isPlaylistUrl(currentUrl);
 });
-
 const playlistLabel = computed(() => {
   return getPlaylistLabel(url.value.trim()) || "播放列表";
 });
-
 const canDownload = computed(() =>
   Boolean(videoInfo.value && selectedFormat.value),
 );
@@ -433,46 +403,37 @@ const downloadButtonText = computed(() => {
   if (!selectedFormat.value) return "请选择格式";
   return "开始下载";
 });
-
 const loadingPlaylist = ref(false);
-
 const isUrlSaved = computed(() => {
   const currentUrl = url.value.trim();
   if (!currentUrl) return false;
   return savedUrlsStore.entries.some((e) => e.url === currentUrl);
 });
-
 const isPlaylistSaved = computed(() => {
   const currentUrl = url.value.trim();
   if (!currentUrl) return false;
   return savedUrlsStore.entries.some((e) => e.url === currentUrl);
 });
-
 onMounted(async () => {
   await settingsStore.loadFromLocal();
   savedUrlsStore.loadSavedUrls();
-
   const queryUrl = route.query.url as string | undefined;
   if (queryUrl) {
     url.value = queryUrl;
     handleParse();
   }
-
   try {
     const recovered = await window.api.recoverUnfinished();
     if (recovered.length > 0) {
       for (const task of recovered) {
         downloadStore.addTask(task);
       }
-      ElMessage.info(
-        `检测到 ${recovered.length} 个未完成的下载任务，可点击"重试"重新下载。`,
-      );
+      ElMessage.info(`检测到 ${recovered.length} 个未完成的下载任务，可点击重试重新下载。`);
     }
   } catch {
     /* recovery is best-effort */
   }
 });
-
 function formatDuration(seconds: number): string {
   if (!seconds || seconds <= 0) return "";
   const h = Math.floor(seconds / 3600);
@@ -482,7 +443,6 @@ function formatDuration(seconds: number): string {
     return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
-
 async function handlePaste() {
   try {
     const text = await navigator.clipboard.readText();
@@ -490,19 +450,16 @@ async function handlePaste() {
       url.value = text.trim();
     }
   } catch {
-    ElMessage.warning("无法读取剪贴板，请手动粘贴");
+    ElMessage.warning("无法读取剪贴板，请手动粘贴链接");
   }
 }
-
 async function handleParse() {
   const currentUrl = url.value.trim();
   if (!currentUrl) return;
-
   parsing.value = true;
   error.value = "";
   resetSingleVideoState();
   clearPlaylistState();
-
   if (isBilibiliUrl(currentUrl)) {
     try {
       const state = await window.api.getBiliState();
@@ -510,9 +467,7 @@ async function handleParse() {
         const warningToken = state.expiresAt || "expired-no-expiry";
         if (biliExpiryWarningToken.value !== warningToken) {
           biliExpiryWarningToken.value = warningToken;
-          ElMessage.warning(
-            "B站 Cookie 已过期，可能无法获取高清画质。请前往设置 → B站 重新登录。",
-          );
+          ElMessage.warning("B站 Cookie 已过期，可能无法获取高清画质。请前往设置 → B站 重新登录。");
         }
       } else {
         biliExpiryWarningToken.value = "";
@@ -521,7 +476,6 @@ async function handleParse() {
       /* best-effort check */
     }
   }
-
   // Bilibili space/collection URLs go straight to playlist
   if (isBilibiliSpaceUrl(currentUrl)) {
     try {
@@ -531,11 +485,9 @@ async function handleParse() {
     }
     return;
   }
-
   try {
     const result = await window.api.parseVideo(currentUrl);
     downloadStore.setVideoInfo(result);
-
     if (result.formats.length > 0) {
       selectedFormat.value = result.formats[0].formatId;
     }
@@ -555,7 +507,6 @@ async function handleParse() {
     parsing.value = false;
   }
 }
-
 function isBilibiliSpaceUrl(input: string): boolean {
   try {
     const hostname = new URL(input).hostname.toLowerCase();
@@ -564,16 +515,13 @@ function isBilibiliSpaceUrl(input: string): boolean {
     return false;
   }
 }
-
 async function loadPlaylist(targetUrl = url.value.trim()) {
   const currentUrl = targetUrl.trim();
   if (!currentUrl) return;
-
   loadingPlaylist.value = true;
   error.value = "";
   resetSingleVideoState();
   clearPlaylistState();
-
   try {
     playlistResult.value = await window.api.parsePlaylist(currentUrl);
   } catch (caughtError: unknown) {
@@ -583,11 +531,9 @@ async function loadPlaylist(targetUrl = url.value.trim()) {
     loadingPlaylist.value = false;
   }
 }
-
 function clearPlaylist() {
   clearPlaylistState();
 }
-
 function clearPlaylistState() {
   playlistResult.value = null;
   selectedEntry.value = null;
@@ -596,7 +542,6 @@ function clearPlaylistState() {
   entryError.value = "";
   resetEntrySubtitleState();
 }
-
 function resetSingleVideoState() {
   downloadStore.setVideoInfo(null);
   selectedFormat.value = "";
@@ -606,7 +551,6 @@ function resetSingleVideoState() {
   selectedSubLangs.value = [];
   embedSubs.value = false;
 }
-
 function resetEntrySubtitleState() {
   entryEnableSubs.value = false;
   entryWriteSubs.value = true;
@@ -614,18 +558,16 @@ function resetEntrySubtitleState() {
   entrySelectedSubLangs.value = [];
   entryEmbedSubs.value = false;
 }
-
 async function copyPlaylistUrl() {
   const currentUrl = url.value.trim();
   if (!currentUrl) return;
   try {
     await navigator.clipboard.writeText(currentUrl);
-    ElMessage.success("列表链接已复制");
+    ElMessage.success("合集链接已复制");
   } catch {
     ElMessage.warning("复制失败");
   }
 }
-
 async function copyEntryUrl(entry: PlaylistEntry) {
   try {
     await navigator.clipboard.writeText(entry.url);
@@ -634,7 +576,6 @@ async function copyEntryUrl(entry: PlaylistEntry) {
     ElMessage.warning("复制失败");
   }
 }
-
 async function savePlaylist() {
   const currentUrl = url.value.trim();
   if (!currentUrl) return;
@@ -644,13 +585,11 @@ async function savePlaylist() {
     thumbnail: playlistResult.value?.entries[0]?.thumbnail || "",
     uploader: playlistResult.value?.uploader || "",
   });
-  ElMessage.success("列表已保存");
+  ElMessage.success("合集已收藏");
 }
-
 async function togglePlaylistSaved() {
   const currentUrl = url.value.trim();
   if (!currentUrl) return;
-
   if (isPlaylistSaved.value) {
     const removed = await savedUrlsStore.removeByUrl(currentUrl);
     if (removed) {
@@ -658,10 +597,8 @@ async function togglePlaylistSaved() {
     }
     return;
   }
-
   await savePlaylist();
 }
-
 async function selectEntry(entry: PlaylistEntry) {
   selectedEntry.value = entry;
   entryParsing.value = true;
@@ -669,7 +606,6 @@ async function selectEntry(entry: PlaylistEntry) {
   entryVideoInfo.value = null;
   entrySelectedFormat.value = "";
   resetEntrySubtitleState();
-
   try {
     entryVideoInfo.value = await window.api.parseVideo(entry.url);
     if (entryVideoInfo.value.formats.length > 0) {
@@ -682,7 +618,6 @@ async function selectEntry(entry: PlaylistEntry) {
     entryParsing.value = false;
   }
 }
-
 function backToPlaylist() {
   selectedEntry.value = null;
   entryVideoInfo.value = null;
@@ -690,7 +625,6 @@ function backToPlaylist() {
   entryError.value = "";
   resetEntrySubtitleState();
 }
-
 async function downloadSelectedEntry() {
   if (
     !entryVideoInfo.value ||
@@ -698,7 +632,6 @@ async function downloadSelectedEntry() {
     !selectedEntry.value
   )
     return;
-
   const sourceUrl = (
     entryVideoInfo.value.webpageUrl || selectedEntry.value.url
   ).trim();
@@ -708,12 +641,10 @@ async function downloadSelectedEntry() {
   const formatLabel = format
     ? `${format.height > 0 ? `${format.height}p` : "audio"} ${format.ext.toUpperCase()}`
     : entrySelectedFormat.value;
-
   const subLangsValue =
     entryEnableSubs.value && entrySelectedSubLangs.value.length > 0
       ? entrySelectedSubLangs.value.join(",")
       : undefined;
-
   const taskId = await window.api.startDownload({
     url: sourceUrl,
     formatId: entrySelectedFormat.value,
@@ -725,7 +656,6 @@ async function downloadSelectedEntry() {
     subLangs: subLangsValue,
     embedSubs: entryEnableSubs.value && entryEmbedSubs.value,
   });
-
   downloadStore.addTask({
     taskId,
     videoId: entryVideoInfo.value.id,
@@ -746,10 +676,8 @@ async function downloadSelectedEntry() {
     maxRetries: settingsStore.autoRetryCount,
     createdAt: new Date().toISOString(),
   });
-
-  ElMessage.success("已添加到下载队列");
+  ElMessage.success("已加入下载队列");
 }
-
 async function handleDownload() {
   if (!videoInfo.value || !selectedFormat.value) return;
   const sourceUrl = (videoInfo.value.webpageUrl || url.value).trim();
@@ -757,19 +685,16 @@ async function handleDownload() {
     ElMessage.error("下载失败：视频链接为空，请重新解析链接");
     return;
   }
-
   const format = videoInfo.value.formats.find(
     (item) => item.formatId === selectedFormat.value,
   );
   const formatLabel = format
     ? `${format.height > 0 ? `${format.height}p` : "audio"} ${format.ext.toUpperCase()}`
     : selectedFormat.value;
-
   const subLangsValue =
     enableSubs.value && selectedSubLangs.value.length > 0
       ? selectedSubLangs.value.join(",")
       : undefined;
-
   const taskId = await window.api.startDownload({
     url: sourceUrl,
     formatId: selectedFormat.value,
@@ -781,7 +706,6 @@ async function handleDownload() {
     subLangs: subLangsValue,
     embedSubs: enableSubs.value && embedSubs.value,
   });
-
   downloadStore.addTask({
     taskId,
     videoId: videoInfo.value.id,
@@ -802,14 +726,11 @@ async function handleDownload() {
     maxRetries: settingsStore.autoRetryCount,
     createdAt: new Date().toISOString(),
   });
-
-  ElMessage.success("已添加到下载队列");
+  ElMessage.success("已加入下载队列");
 }
-
 async function toggleSavedUrl() {
   const currentUrl = (videoInfo.value?.webpageUrl || url.value.trim()).trim();
   if (!currentUrl) return;
-
   if (isUrlSaved.value) {
     const removed = await savedUrlsStore.removeByUrl(currentUrl);
     if (removed) {
@@ -817,10 +738,8 @@ async function toggleSavedUrl() {
     }
     return;
   }
-
   await handleSaveUrl();
 }
-
 async function handleSaveUrl() {
   if (!videoInfo.value) return;
   await savedUrlsStore.addEntry({
@@ -829,10 +748,9 @@ async function handleSaveUrl() {
     thumbnail: videoInfo.value.thumbnail,
     uploader: videoInfo.value.uploader,
   });
-  ElMessage.success("链接已保存");
+  ElMessage.success("链接已收藏");
 }
 </script>
-
 <style scoped>
 .home-page {
   width: 100%;
@@ -841,11 +759,9 @@ async function handleSaveUrl() {
   padding: 32px clamp(18px, 3vw, 36px) 48px;
   box-sizing: border-box;
 }
-
 .parse-section {
   margin-bottom: 20px;
 }
-
 .platform-row {
   display: flex;
   align-items: center;
@@ -853,13 +769,11 @@ async function handleSaveUrl() {
   margin-top: 10px;
   flex-wrap: wrap;
 }
-
 .platform-label {
   font-size: 11px;
   color: var(--vb-text-tertiary);
   margin-right: 2px;
 }
-
 .platform-badge {
   padding: 3px 8px;
   border-radius: 4px;
@@ -868,33 +782,27 @@ async function handleSaveUrl() {
   font-size: 11px;
   font-weight: 500;
 }
-
 .url-input-row {
   display: flex;
   gap: 8px;
   align-items: stretch;
 }
-
 .url-input {
   flex: 1;
 }
-
 .url-input :deep(.el-input__wrapper) {
   border-radius: 10px;
   box-shadow: var(--vb-shadow-sm);
 }
-
 .paste-btn {
   border-radius: 10px;
 }
-
 .parse-btn {
   min-width: 96px;
   font-weight: 600;
   border-radius: 10px;
   box-shadow: var(--vb-shadow-sm);
 }
-
 .error-bar {
   display: flex;
   align-items: center;
@@ -907,7 +815,6 @@ async function handleSaveUrl() {
   color: #dc2626;
   font-size: 13px;
 }
-
 .error-close {
   margin-left: auto;
   flex-shrink: 0;
@@ -926,12 +833,10 @@ async function handleSaveUrl() {
     background var(--vb-transition),
     border-color var(--vb-transition);
 }
-
 .error-close:hover {
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.5);
 }
-
 .skeleton-card {
   background: var(--vb-bg-surface);
   border: 1px solid var(--vb-border);
@@ -939,12 +844,10 @@ async function handleSaveUrl() {
   padding: 20px;
   margin-bottom: 20px;
 }
-
 .skeleton-row {
   display: flex;
   gap: 20px;
 }
-
 .skeleton-thumb {
   width: 200px;
   height: 112px;
@@ -953,7 +856,6 @@ async function handleSaveUrl() {
   flex-shrink: 0;
   animation: shimmer 1.5s ease-in-out infinite;
 }
-
 .skeleton-info {
   flex: 1;
   display: flex;
@@ -961,14 +863,12 @@ async function handleSaveUrl() {
   gap: 12px;
   padding-top: 8px;
 }
-
 .skeleton-line {
   height: 14px;
   border-radius: 4px;
   background: var(--vb-bg-hover);
   animation: shimmer 1.5s ease-in-out infinite;
 }
-
 .w-70 {
   width: 70%;
 }
@@ -978,7 +878,6 @@ async function handleSaveUrl() {
 .w-40 {
   width: 40%;
 }
-
 @keyframes shimmer {
   0%,
   100% {
@@ -988,7 +887,6 @@ async function handleSaveUrl() {
     opacity: 0.4;
   }
 }
-
 /* ===== Playlist list ===== */
 .playlist-header {
   display: flex;
@@ -1002,14 +900,12 @@ async function handleSaveUrl() {
   border: 1px solid var(--vb-border);
   border-radius: var(--vb-radius);
 }
-
 .playlist-header-left {
   display: flex;
   align-items: center;
   gap: 10px;
   color: var(--vb-accent);
 }
-
 .playlist-header-right {
   display: flex;
   align-items: center;
@@ -1017,20 +913,17 @@ async function handleSaveUrl() {
   flex-wrap: wrap;
   margin-left: auto;
 }
-
 .playlist-header-title {
   font-size: 15px;
   font-weight: 600;
   color: var(--vb-text);
 }
-
 .playlist-entries {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-bottom: 24px;
 }
-
 .playlist-entry {
   display: flex;
   align-items: center;
@@ -1044,12 +937,10 @@ async function handleSaveUrl() {
     background var(--vb-transition),
     border-color var(--vb-transition);
 }
-
 .playlist-entry:hover {
   background: var(--vb-bg-hover);
   border-color: var(--vb-accent-light);
 }
-
 .entry-thumb,
 .entry-thumb-placeholder {
   width: 80px;
@@ -1058,7 +949,6 @@ async function handleSaveUrl() {
   object-fit: cover;
   flex-shrink: 0;
 }
-
 .entry-thumb-placeholder {
   display: flex;
   align-items: center;
@@ -1066,7 +956,6 @@ async function handleSaveUrl() {
   background: var(--vb-bg-hover);
   color: var(--vb-text-tertiary);
 }
-
 .entry-body {
   flex: 1;
   min-width: 0;
@@ -1074,11 +963,9 @@ async function handleSaveUrl() {
   flex-direction: column;
   gap: 2px;
 }
-
 .entry-index {
   display: none;
 }
-
 .entry-title {
   font-size: 13px;
   font-weight: 500;
@@ -1087,7 +974,6 @@ async function handleSaveUrl() {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .entry-meta {
   display: flex;
   gap: 10px;
@@ -1095,22 +981,18 @@ async function handleSaveUrl() {
   font-size: 11px;
   color: var(--vb-text-tertiary);
 }
-
 .entry-copy-btn {
   flex-shrink: 0;
   opacity: 0;
   transition: opacity var(--vb-transition);
 }
-
 .playlist-entry:hover .entry-copy-btn {
   opacity: 1;
 }
-
 .entry-arrow {
   color: var(--vb-text-tertiary);
   flex-shrink: 0;
 }
-
 /* ===== Entry detail ===== */
 .entry-detail-back {
   display: inline-flex;
@@ -1124,11 +1006,9 @@ async function handleSaveUrl() {
   cursor: pointer;
   transition: background var(--vb-transition);
 }
-
 .entry-detail-back:hover {
   background: var(--vb-accent-bg);
 }
-
 .entry-detail-header {
   display: flex;
   align-items: center;
@@ -1136,7 +1016,6 @@ async function handleSaveUrl() {
   margin-bottom: 16px;
   min-width: 0;
 }
-
 .entry-detail-thumb {
   width: 120px;
   height: 68px;
@@ -1144,20 +1023,17 @@ async function handleSaveUrl() {
   object-fit: cover;
   flex-shrink: 0;
 }
-
 .entry-detail-index {
   display: block;
   font-size: 11px;
   color: var(--vb-text-tertiary);
   margin-bottom: 2px;
 }
-
 .entry-detail-title {
   font-size: 15px;
   font-weight: 600;
   color: var(--vb-text);
 }
-
 .action-card {
   background: var(--vb-bg-surface);
   border: 1px solid var(--vb-border);
@@ -1165,7 +1041,6 @@ async function handleSaveUrl() {
   padding: 20px;
   margin-bottom: 24px;
 }
-
 .field-label {
   display: block;
   font-size: 11px;
@@ -1175,12 +1050,10 @@ async function handleSaveUrl() {
   text-transform: uppercase;
   margin-bottom: 8px;
 }
-
 /* ===== Subtitle options ===== */
 .subs-section {
   display: none;
 }
-
 .download-btn {
   margin-top: 20px;
   width: 100%;
@@ -1188,7 +1061,6 @@ async function handleSaveUrl() {
   font-size: 15px;
   font-weight: 600;
 }
-
 /* ===== Playlist bar ===== */
 .playlist-bar {
   display: flex;
@@ -1201,12 +1073,10 @@ async function handleSaveUrl() {
   border: 1px solid rgba(99, 102, 241, 0.15);
   border-radius: var(--vb-radius-sm);
 }
-
 .playlist-bar-icon {
   flex-shrink: 0;
   color: var(--vb-accent);
 }
-
 .playlist-bar-text {
   flex: 1;
   min-width: 220px;
@@ -1214,53 +1084,44 @@ async function handleSaveUrl() {
   color: var(--vb-text-secondary);
   line-height: 1.4;
 }
-
 /* ===== Save button ===== */
 .save-btn {
   border-radius: 10px;
   min-width: 44px;
   transition: all var(--vb-transition);
 }
-
 .save-btn.saved {
   color: var(--vb-accent);
   border-color: var(--vb-accent);
   background: var(--vb-accent-bg);
   opacity: 0.7;
 }
-
 @media (max-width: 960px) {
   .home-page {
     max-width: none;
   }
 }
-
 @media (max-width: 700px) {
   .home-page {
     padding: 24px 16px;
   }
-
   .url-input-row {
     flex-direction: column;
   }
-
   .playlist-header-right,
   .playlist-bar {
     width: 100%;
   }
-
   .entry-detail-header {
     align-items: flex-start;
   }
 }
-
 @media (max-width: 560px) {
   .playlist-header-left,
   .entry-detail-header {
     flex-direction: column;
     align-items: flex-start;
   }
-
   .entry-detail-thumb {
     width: 100%;
     max-width: 220px;
@@ -1269,3 +1130,4 @@ async function handleSaveUrl() {
   }
 }
 </style>
+

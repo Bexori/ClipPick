@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia'
+﻿import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import type { DownloadTask, VideoParseResult, CompletePayload, ErrorPayload, ProgressPayload } from '../../../shared/types'
 import { useHistoryStore } from './history.store'
 import { useSettingsStore } from './settings.store'
@@ -77,7 +77,35 @@ export const useDownloadStore = defineStore('download', () => {
     if (!automatic) ElMessage.success('Task requeued')
   }
 
-  // IPC listeners registered once on store creation and kept across page navigations
+  function subtitleCompletionMessage(data: CompletePayload): { type: 'success' | 'warning'; message: string } | null {
+    const files = data.subtitleFiles ?? []
+
+    if (data.subtitleStatus === 'embedded') {
+      return {
+        type: 'success',
+        message: '已封装字幕轨。播放时请在播放器的字幕菜单里选择内嵌字幕轨。'
+      }
+    }
+
+    if (data.subtitleStatus === 'external') {
+      return {
+        type: 'success',
+        message: files.length > 0
+          ? `已下载外挂字幕。字幕文件与视频保存在同一目录；大多数播放器会自动加载，如未显示，请在字幕菜单手动选择。`
+          : '已下载外挂字幕。请在播放器的字幕菜单中手动选择字幕文件。'
+      }
+    }
+
+    if (data.subtitleStatus === 'embed-failed') {
+      return {
+        type: 'warning',
+        message: '封装失败，仅保留外挂字幕。请在播放器的字幕菜单中手动加载同目录字幕文件。'
+      }
+    }
+
+    return null
+  }
+
   window.api.onDownloadProgress((data: ProgressPayload) => {
     updateTask(data.taskId, {
       status: data.status === 'post-processing' ? 'post-processing' : 'downloading',
@@ -120,6 +148,17 @@ export const useDownloadStore = defineStore('download', () => {
     if (settingsStore.downloadNotifications) {
       ElMessage.success(`${task?.title ?? 'Video'} download complete`)
     }
+
+    const subtitleNotice = subtitleCompletionMessage(data)
+    if (subtitleNotice) {
+      ElNotification({
+        title: subtitleNotice.type === 'success' ? '字幕处理完成' : '字幕处理提醒',
+        message: subtitleNotice.message,
+        type: subtitleNotice.type,
+        duration: 5500
+      })
+    }
+
     window.setTimeout(() => {
       removeTask(data.taskId)
     }, 3000)

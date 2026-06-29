@@ -1,4 +1,4 @@
-import { computed, reactive, ref } from 'vue'
+﻿import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSettingsStore } from '../stores/settings.store'
 import type { AppSettings, TranslateProfile, BiliLoginState } from '../../../shared/types'
@@ -8,15 +8,15 @@ type TabKey = 'download' | 'bilibili' | 'cookie' | 'network' | 'notify' | 'trans
 const defaultProfile: TranslateProfile = {
   id: 'deepseek',
   name: 'DeepSeek',
-  endpoint: 'https://api.deepseek.com/v1',
-  model: 'deepseek-chat',
+  endpoint: 'https://api.deepseek.com',
+  model: 'deepseek-v4-pro',
   hasKey: false
 }
 
 const providerPresets = [
-  { value: 'deepseek', label: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { value: 'deepseek', label: 'DeepSeek', endpoint: 'https://api.deepseek.com', model: 'deepseek-v4-pro' },
   { value: 'minimax', label: 'MiniMax', endpoint: 'https://api.minimaxi.com/v1', model: 'abab6.5s-chat' },
-  { value: 'moonshot', label: 'Moonshot（清朗版）', endpoint: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
+  { value: 'moonshot', label: 'Moonshot', endpoint: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
   { value: 'zhipu', label: '智谱 GLM', endpoint: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
   { value: 'custom', label: '自定义', endpoint: '', model: '' }
 ]
@@ -41,7 +41,7 @@ export function useSettingsEditor() {
   const displaySavePath = computed(() => {
     if (draft.defaultSavePath) return draft.defaultSavePath
     if (settingsStore.defaultSavePath) return settingsStore.defaultSavePath
-    return '系统下载目录（ClipPick/）'
+    return '系统下载目录（ClipPick/downloads）'
   })
 
   function ensureDefaults() {
@@ -136,7 +136,7 @@ export function useSettingsEditor() {
   async function handleBiliLogout() {
     await window.api.clearBiliCookies()
     biliState.value = { loggedIn: false, expired: false }
-    ElMessage.success('已退出 B站登录')
+    ElMessage.success('B站登录已退出')
   }
 
   async function save() {

@@ -1,4 +1,4 @@
-import { ChildProcess, spawnSync } from 'child_process'
+﻿import { ChildProcess, spawnSync } from 'child_process'
 import { randomUUID } from 'crypto'
 import { app, BrowserWindow, Notification } from 'electron'
 import * as fs from 'fs'
@@ -259,7 +259,7 @@ export class DownloadManager {
       logger.error(`Download process error: ${taskId}`, err)
       win.webContents.send('download:error', {
         taskId,
-        error: `闂傚倸鍊搁崐椋庣矆娓氣偓楠炲鏁撻悩鑼槱閻熸粎澧楃敮鎺楀垂閸岀偞鐓熸俊銈傚亾闁绘锕畷锝堢疀濞戞瑧鍘撻梺鍛婄箓鐎氼剟鍩€椤掆偓椤兘宕洪姀銈呯睄闁割偆鍠庨埀顒傛暬閺屻劌鈹戦崱娑扁偓妤侇殽閻愭惌娈樼紒杈ㄥ笚閹峰懐鎲撮崟顓炲殥婵＄偑鍊ら崢鐓庮焽閿熺姷宓侀柛鈩冪☉缁犮儲銇勯弬鍨挃闁告洘锕㈠? ${err.message}`,
+        error: `下载进程启动失败: ${err.message}`,
         detail: err.stack || err.message
       } as ErrorPayload)
       this.downloads.delete(taskId)

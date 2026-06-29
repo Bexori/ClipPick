@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <section class="subtitle-panel">
     <div class="subtitle-header">
       <div class="subtitle-copy">
@@ -31,7 +31,7 @@
       <div class="setting-row">
         <div class="setting-copy">
           <div class="setting-title">字幕语言</div>
-          <div class="setting-desc">不选择语言时，将下载当前类型下的全部可用字幕。</div>
+          <div class="setting-desc">不选语言时，将下载当前类型下的全部可用字幕。</div>
         </div>
         <div class="setting-control setting-control-wide">
           <el-select
@@ -55,8 +55,8 @@
 
       <div v-if="canEmbedCurrentMode" class="setting-row">
         <div class="setting-copy">
-          <div class="setting-title">嵌入视频</div>
-          <div class="setting-desc">当前字幕类型支持嵌入输出视频，开启后会在下载后尝试封装到视频中。</div>
+          <div class="setting-title">封装为内嵌字幕轨</div>
+          <div class="setting-desc">开启后会在下载完成后尝试把字幕封装进视频容器。播放时需要在播放器的字幕菜单里切换字幕轨。</div>
         </div>
         <div class="setting-control">
           <el-switch :model-value="embedSubs" @update:model-value="emitEmbed" />
@@ -117,12 +117,12 @@ const modeOptions = computed(() => {
 const panelHint = computed(() => {
   if (props.hint) return props.hint
   if (manualCount.value > 0 && autoCount.value > 0) {
-    return '支持手动字幕与自动字幕，可按类型和语言选择下载。'
+    return '支持手动字幕和自动字幕，可按类型和语言选择下载。'
   }
   if (autoCount.value > 0) {
-    return '当前仅检测到自动字幕，下载时会明确按自动字幕处理。'
+    return '当前仅检测到自动字幕，适合没有人工字幕的视频。'
   }
-  return '可按语言选择下载字幕，并在支持时嵌入到视频中。'
+  return '可按语言选择下载字幕，并在支持时封装为内嵌字幕轨。'
 })
 
 const enabledProxy = computed({
@@ -181,10 +181,10 @@ const canEmbedCurrentMode = computed(() => activeSubtitles.value.some(item => it
 
 const modeDescription = computed(() => {
   if (subtitleMode.value === 'auto') {
-    return '当前将下载自动字幕，适合没有人工字幕的视频。'
+    return '将下载平台自动生成的字幕，适合没有人工字幕的视频。'
   }
   if (subtitleMode.value === 'both') {
-    return '当前将同时下载手动字幕和自动字幕。'
+    return '将同时下载手动字幕和自动字幕。'
   }
   return '优先下载视频自带的手动字幕。'
 })

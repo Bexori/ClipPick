@@ -1,291 +1,334 @@
-﻿<template>
+﻿
+<template>
   <div class="settings-page">
+    <header class="page-header">
+      <div>
+        <h1>设置</h1>
+        <p>下载、登录、代理、翻译与外观配置会直接保存到本机。</p>
+      </div>
+      <div class="header-meta">
+        <span>版本 {{ version }}</span>
+        <span :class="['save-state', saveState]">{{ saveStateText }}</span>
+      </div>
+    </header>
+
     <main class="settings-content">
-      <div class="content-inner">
-          <section
-            v-for="section in sections"
-            :key="section.key"
-            class="settings-section"
-          >
-            <header class="section-header">
-              <h2>{{ section.label }}</h2>
-            </header>
+      <section v-for="section in sections" :key="section.key" class="settings-section">
+        <header class="section-header">
+          <h2>{{ section.label }}</h2>
+        </header>
 
-            <div class="section-rows">
-              <template v-if="section.key === 'download'">
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>默认保存目录</strong>
-                    <span>新建下载任务时默认保存到该目录。</span>
-                  </div>
-                  <div class="setting-control">
-                    <div class="path-control">
-                      <el-input
-                        v-model="draft.defaultSavePath"
-                        class="control-field path-input"
-                        placeholder="例如 D:\\Downloads"
-                        readonly
-                        :title="draft.defaultSavePath || defaultDownloadPath"
-                      />
-                      <el-button @click="chooseDownloadPath">选择</el-button>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>并发下载数</strong>
-                    <span>同时进行的下载任务数量，过高可能影响速度和稳定性。</span>
-                  </div>
-                  <div class="setting-control">
-                    <el-input-number v-model="draft.concurrentDownloads" :min="1" :max="5" controls-position="right" />
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>失败重试次数</strong>
-                    <span>下载失败后自动重试的次数。</span>
-                  </div>
-                  <div class="setting-control">
-                    <el-input-number v-model="draft.autoRetryCount" :min="0" :max="10" controls-position="right" />
-                  </div>
-                </div>
-              </template>
-
-              <template v-else-if="section.key === 'cookieLogin'">
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>Cookie 来源</strong>
-                    <span>选择 Cookie 的读取方式，用于需要登录状态的网站解析。</span>
-                  </div>
-                  <div class="setting-control">
-                    <el-select v-model="draft.cookieMode" class="control-field">
-                      <el-option label="不使用 Cookie" value="none" />
-                      <el-option label="从浏览器读取" value="browser" />
-                      <el-option label="使用 cookies.txt 文件" value="file" />
-                    </el-select>
-                  </div>
-                </div>
-
-                <div v-if="draft.cookieMode === 'browser'" class="setting-row">
-                  <div class="setting-copy">
-                    <strong>浏览器来源选择</strong>
-                    <span>Cookie 来源为“从浏览器读取”时，选择读取的浏览器。</span>
-                  </div>
-                  <div class="setting-control">
-                    <el-select v-model="draft.cookieBrowser" class="control-field">
-                      <el-option label="Chrome" value="chrome" />
-                      <el-option label="Edge" value="edge" />
-                      <el-option label="Firefox" value="firefox" />
-                      <el-option label="自定义" value="custom" />
-                    </el-select>
-                  </div>
-                </div>
-
-                <div v-if="draft.cookieMode === 'file'" class="setting-row">
-                  <div class="setting-copy">
-                    <strong>cookies.txt 文件路径</strong>
-                    <span>Cookie 来源为“使用 cookies.txt 文件”时，选择本地 Cookie 文件。</span>
-                  </div>
-                  <div class="setting-control">
-                    <div class="path-control">
-                      <el-input
-                        v-model="draft.cookiesFile"
-                        class="control-field path-input"
-                        placeholder="例如 D:\\cookies.txt"
-                        readonly
-                        :title="draft.cookiesFile || '请选择 cookies.txt 文件'"
-                      />
-                      <el-button @click="chooseCookiesFile">选择文件</el-button>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="setting-row setting-row--bili">
-                  <div class="setting-copy">
-                    <strong>B 站登录状态</strong>
-                    <span>查看当前账号 Cookie 是否有效，并进行登录或清除。</span>
-                  </div>
-                  <div class="setting-control">
-                    <div class="bili-status">
-                      <div class="bili-status__grid">
-                        <div>
-                          <span>当前状态</span>
-                          <strong>{{ biliStateLabel }}</strong>
-                        </div>
-                        <div>
-                          <span>账号</span>
-                          <strong>{{ biliAccountLabel }}</strong>
-                        </div>
-                        <div>
-                          <span>有效期</span>
-                          <strong>{{ biliExpiryLabel }}</strong>
-                        </div>
-                        <div class="bili-status__path">
-                          <span>Cookie 存储路径</span>
-                          <strong>{{ biliCookiesPathLabel }}</strong>
-                        </div>
-                      </div>
-                      <div class="inline-actions">
-                        <el-button type="primary" @click="openBiliLoginDialog">
-                          {{ biliState.loggedIn ? '重新登录' : '扫码登录' }}
-                        </el-button>
-                        <el-button @click="checkBiliStatus">检查状态</el-button>
-                        <el-button plain type="danger" :disabled="!biliState.loggedIn" @click="clearBiliLogin">清除登录</el-button>
-                      </div>
-                      <div class="status-note" :class="biliCheckStateClass">{{ biliCheckLabel }}</div>
-                    </div>
-                  </div>
-                </div>
-              </template>
-
-              <template v-else-if="section.key === 'network'">
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>代理地址</strong>
-                    <span>配置下载和解析请求使用的代理，支持 HTTP / HTTPS / SOCKS5。</span>
-                  </div>
-                  <div class="setting-control">
-                    <el-input
-                      v-model="draft.proxy"
-                      class="control-field"
-                        placeholder="http://127.0.0.1:7890 或 socks5://127.0.0.1:7890"
-                      clearable
-                    />
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>测试连接</strong>
-                    <span>检查当前代理是否可用。</span>
-                  </div>
-                  <div class="setting-control">
-                    <div class="inline-actions inline-actions--left">
-                      <el-button :loading="proxyTesting" @click="testProxyConnection">测试连接</el-button>
-                      <span class="inline-result" :class="proxyTestStateClass">{{ proxyTestLabel }}</span>
-                    </div>
-                  </div>
-                </div>
-              </template>
-
-              <template v-else-if="section.key === 'translate'">
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>默认翻译方案</strong>
-                    <span>选择字幕、标题、简介等内容默认使用的翻译配置。</span>
-                  </div>
-                  <div class="setting-control">
-                    <el-select
-                      v-model="draft.activeProfileId"
-                      class="control-field"
-                      :placeholder="draft.translateProfiles.length ? '选择默认翻译方案' : '暂无翻译方案'"
-                    >
-                      <el-option
-                        v-for="profile in draft.translateProfiles"
-                        :key="profile.id"
-                        :label="profile.name || '未命名方案'"
-                        :value="profile.id"
-                      />
-                    </el-select>
-                  </div>
-                </div>
-
-                <div class="translate-toolbar">
-                  <el-button plain @click="openProfileDrawer()">
-                    <el-icon><Plus /></el-icon>
-                    新增方案
-                  </el-button>
-                </div>
-
-                <div class="translate-list">
-                  <div v-if="draft.translateProfiles.length === 0" class="empty-state">
-                    暂无翻译方案，可新增一个用于字幕和文本翻译。
-                  </div>
-
-                  <template v-else>
-                    <div class="translate-head">
-                      <span>方案名称</span>
-                      <span>模型</span>
-                      <span>状态</span>
-                      <span>操作</span>
-                    </div>
-
-                    <div
-                      v-for="profile in draft.translateProfiles"
-                      :key="profile.id"
-                      class="translate-row"
-                      :class="{ active: profile.id === draft.activeProfileId }"
-                    >
-                      <div class="translate-name">
-                        <strong>{{ profile.name || '未命名方案' }}</strong>
-                        <span v-if="profile.id === draft.activeProfileId">默认</span>
-                      </div>
-                      <div class="translate-model">{{ profile.model || '未设置' }}</div>
-                      <div>
-                        <el-tag size="small" effect="plain" :type="profile.hasKey ? 'success' : 'info'">
-                          {{ profile.hasKey ? '可用' : '未配置 Key' }}
-                        </el-tag>
-                      </div>
-                      <div class="translate-actions">
-                        <el-button text @click="openProfileDrawer(profile)">编辑</el-button>
-                        <el-button text @click="duplicateProfile(profile)">复制</el-button>
-                        <el-button text type="danger" @click="removeProfile(profile)">删除</el-button>
-                      </div>
-                    </div>
-                  </template>
-                </div>
-              </template>
-
-              <template v-else-if="section.key === 'notify'">
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>下载完成通知</strong>
-                    <span>下载任务完成后是否提醒。</span>
-                  </div>
-                  <div class="setting-control">
-                    <el-switch v-model="draft.downloadNotifications" />
-                  </div>
-                </div>
-
-                <div class="setting-row">
-                  <div class="setting-copy">
-                    <strong>通知渠道</strong>
-                    <span>系统通知和应用内通知可以同时选择。</span>
-                  </div>
-                  <div class="setting-control">
-                    <el-checkbox-group v-model="notificationChannelModel" class="checkbox-group" :disabled="!draft.downloadNotifications">
-                      <el-checkbox label="system">系统通知</el-checkbox>
-                      <el-checkbox label="in-app">应用内通知</el-checkbox>
-                    </el-checkbox-group>
-                  </div>
-                </div>
-              </template>
+        <div class="section-body">
+          <template v-if="section.key === 'download'">
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>默认保存目录</strong>
+                <span>新建下载任务时默认保存到这里。</span>
+              </div>
+              <div class="setting-control wide-control">
+                <el-input
+                  v-model="draft.defaultSavePath"
+                  readonly
+                  placeholder="例如 D:\\Downloads"
+                  :title="draft.defaultSavePath || '未设置'"
+                />
+                <el-button @click="chooseDownloadPath">选择</el-button>
+              </div>
             </div>
-          </section>
+
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>并发下载数</strong>
+                <span>同时执行的下载任务数量。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-input-number v-model="draft.concurrentDownloads" :min="1" :max="8" controls-position="right" />
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>失败自动重试</strong>
+                <span>下载失败后自动重试的次数。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-input-number v-model="draft.autoRetryCount" :min="0" :max="3" controls-position="right" />
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="section.key === 'cookie'">
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>Cookie 来源</strong>
+                <span>用于需要登录态的网站解析。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-select v-model="draft.cookieMode">
+                  <el-option v-for="option in cookieModeOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </div>
+            </div>
+
+            <div v-if="draft.cookieMode === 'browser'" class="setting-row">
+              <div class="setting-copy">
+                <strong>浏览器来源</strong>
+                <span>从指定浏览器读取站点 Cookie。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-select v-model="draft.cookieBrowser">
+                  <el-option label="Edge" value="edge" />
+                  <el-option label="Chrome" value="chrome" />
+                  <el-option label="Firefox" value="firefox" />
+                  <el-option label="自定义" value="custom" />
+                </el-select>
+              </div>
+            </div>
+
+            <div v-if="draft.cookieMode === 'file'" class="setting-row">
+              <div class="setting-copy">
+                <strong>cookies.txt 文件</strong>
+                <span>选择本地导出的 cookies.txt 文件。</span>
+              </div>
+              <div class="setting-control wide-control">
+                <el-input
+                  v-model="draft.cookiesFile"
+                  readonly
+                  placeholder="例如 D:\\cookies.txt"
+                  :title="draft.cookiesFile || '未选择文件'"
+                />
+                <el-button @click="chooseCookiesFile">选择文件</el-button>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="section.key === 'bilibili'">
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>登录有效期</strong>
+                <span>本地 Cookie 的最长保留时间，过期后需要重新扫码。</span>
+              </div>
+              <div class="setting-control">
+                <el-radio-group v-model="draft.biliCookieHours" size="small">
+                  <el-radio-button :value="1">1 小时</el-radio-button>
+                  <el-radio-button :value="6">6 小时</el-radio-button>
+                  <el-radio-button :value="24">24 小时</el-radio-button>
+                  <el-radio-button :value="168">7 天</el-radio-button>
+                </el-radio-group>
+              </div>
+            </div>
+
+            <div class="setting-row setting-row--stack">
+              <div class="setting-copy">
+                <strong>B站登录</strong>
+                <span>Cookie 仅保存在本机 `userData/bilibili-cookies.txt`，不会上传到云端。</span>
+              </div>
+              <div class="setting-control stacked-control">
+                <div class="status-grid">
+                  <div>
+                    <span>当前状态</span>
+                    <strong>{{ biliStatusText }}</strong>
+                  </div>
+                  <div>
+                    <span>账号</span>
+                    <strong>{{ biliAccountText }}</strong>
+                  </div>
+                  <div>
+                    <span>失效时间</span>
+                    <strong>{{ biliExpireText }}</strong>
+                  </div>
+                  <div>
+                    <span>剩余时长</span>
+                    <strong>{{ biliRemainText }}</strong>
+                  </div>
+                </div>
+                <div class="inline-actions">
+                  <el-button type="primary" @click="openBiliLoginDialog">{{ biliLoginButtonText }}</el-button>
+                  <el-button @click="checkBiliStatus">检查状态</el-button>
+                  <el-button plain type="danger" :disabled="!biliState.loggedIn" @click="clearBiliLogin">退出登录</el-button>
+                </div>
+                <span class="inline-note" :class="biliCheckState">{{ biliCheckText }}</span>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="section.key === 'network'">
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>代理地址</strong>
+                <span>支持 HTTP、HTTPS、SOCKS5。</span>
+              </div>
+              <div class="setting-control wide-control">
+                <el-input v-model="draft.proxy" clearable placeholder="http://127.0.0.1:7890 或 socks5://127.0.0.1:7890" />
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>连接测试</strong>
+                <span>检查当前代理是否可用。</span>
+              </div>
+              <div class="setting-control action-control">
+                <el-button :loading="proxyTesting" @click="testProxyConnection">测试连接</el-button>
+                <span class="inline-note" :class="proxyTestState">{{ proxyTestText }}</span>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="section.key === 'appearance'">
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>界面语言</strong>
+                <span>当前仅设置保存，完整多语言文案尚未全部接入。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-select v-model="draft.appLanguage">
+                  <el-option label="跟随系统" value="system" />
+                  <el-option label="简体中文" value="zh-CN" />
+                  <el-option label="English" value="en" />
+                  <el-option label="日本語" value="ja" />
+                </el-select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>主题模式</strong>
+                <span>切换浅色、深色或跟随系统。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-select v-model="draft.themeMode">
+                  <el-option label="跟随系统" value="system" />
+                  <el-option label="浅色" value="light" />
+                  <el-option label="深色" value="dark" />
+                </el-select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>界面密度</strong>
+                <span>控制列表和表单的紧凑程度。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-select v-model="draft.density">
+                  <el-option label="舒适" value="comfortable" />
+                  <el-option label="标准" value="standard" />
+                  <el-option label="紧凑" value="compact" />
+                </el-select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>主题色</strong>
+                <span>用于按钮高亮和选中状态。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-color-picker v-model="draft.accentColor" />
+              </div>
+            </div>
+          </template>
+          <template v-else-if="section.key === 'translate'">
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>默认翻译方案</strong>
+                <span>标题、描述、字幕翻译优先使用这里选中的方案。</span>
+              </div>
+              <div class="setting-control wide-control">
+                <el-select v-model="draft.activeProfileId" placeholder="选择默认方案">
+                  <el-option
+                    v-for="profile in draft.translateProfiles"
+                    :key="profile.id"
+                    :label="profile.name || '未命名方案'"
+                    :value="profile.id"
+                  />
+                </el-select>
+                <el-button @click="openProfileDrawer()">新增方案</el-button>
+              </div>
+            </div>
+
+            <div class="translate-list">
+              <div v-if="draft.translateProfiles.length === 0" class="empty-state">还没有翻译方案。</div>
+              <div v-else class="translate-table">
+                <div class="translate-head">
+                  <span>名称</span>
+                  <span>模型</span>
+                  <span>状态</span>
+                  <span>操作</span>
+                </div>
+                <div
+                  v-for="profile in draft.translateProfiles"
+                  :key="profile.id"
+                  class="translate-row"
+                  :class="{ active: profile.id === draft.activeProfileId }"
+                >
+                  <div class="translate-name">
+                    <strong>{{ profile.name || '未命名方案' }}</strong>
+                    <span v-if="profile.id === draft.activeProfileId">默认</span>
+                  </div>
+                  <div class="translate-model">{{ profile.model || '未设置' }}</div>
+                  <div>
+                    <el-tag size="small" effect="plain" :type="profile.hasKey ? 'success' : 'info'">
+                      {{ profile.hasKey ? '已配置 Key' : '未配置 Key' }}
+                    </el-tag>
+                  </div>
+                  <div class="translate-actions">
+                    <el-button text @click="openProfileDrawer(profile)">编辑</el-button>
+                    <el-button text @click="duplicateProfile(profile)">复制</el-button>
+                    <el-button text type="danger" @click="removeProfile(profile)">删除</el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="section.key === 'notify'">
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>下载完成通知</strong>
+                <span>任务结束后提示结果。</span>
+              </div>
+              <div class="setting-control compact-control">
+                <el-switch v-model="draft.downloadNotifications" />
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-copy">
+                <strong>通知方式</strong>
+                <span>系统通知与应用内通知可同时开启。</span>
+              </div>
+              <div class="setting-control">
+                <el-checkbox-group v-model="notificationChannelModel" :disabled="!draft.downloadNotifications">
+                  <el-checkbox label="system">系统通知</el-checkbox>
+                  <el-checkbox label="in-app">应用内通知</el-checkbox>
+                </el-checkbox-group>
+              </div>
+            </div>
+          </template>
         </div>
-      </main>
+      </section>
+    </main>
 
     <el-dialog
       v-model="biliLoginVisible"
-      title="B 站扫码登录"
-      width="460px"
+      title="B站登录"
+      width="400px"
       destroy-on-close
-      class="qr-dialog"
       :close-on-click-modal="false"
+      @closed="stopBiliPolling"
     >
-      <div class="qr-dialog__body">
-        <div class="qr-dialog__canvas">
-          <img v-if="biliQrDataUrl" :src="biliQrDataUrl" alt="B 站登录二维码" />
+      <div class="qr-dialog">
+        <div class="qr-box">
+          <img v-if="biliQrDataUrl" :src="biliQrDataUrl" alt="B站登录二维码" />
           <div v-else class="qr-placeholder">等待生成二维码</div>
         </div>
-        <div class="qr-dialog__meta">
-          <p>{{ biliQrTip }}</p>
-          <div class="inline-actions inline-actions--left">
-            <el-button :loading="biliQrLoading" @click="refreshBiliQr">刷新二维码</el-button>
-            <el-button plain @click="biliLoginVisible = false">取消登录</el-button>
-          </div>
+        <p class="qr-tip">使用 Bilibili App 扫码并在手机上确认。</p>
+        <p class="qr-state">{{ biliLoginMessage }}</p>
+        <div class="dialog-actions">
+          <el-button @click="biliLoginVisible = false">关闭</el-button>
+          <el-button :loading="biliQrLoading" @click="refreshBiliQr">刷新二维码</el-button>
         </div>
       </div>
     </el-dialog>
@@ -296,44 +339,33 @@
       size="420px"
       destroy-on-close
     >
-      <el-form
-        ref="profileFormRef"
-        :model="profileForm"
-        :rules="profileFormRules"
-        label-position="top"
-        class="profile-form"
-      >
+      <el-form ref="profileFormRef" :model="profileForm" :rules="profileFormRules" label-position="top">
         <el-form-item label="名称" prop="name">
-          <el-input v-model="profileForm.name" placeholder="例如 DeepSeek 标准方案" />
+          <el-input v-model="profileForm.name" placeholder="例如 DeepSeek 主方案" />
         </el-form-item>
 
         <el-form-item label="厂商" prop="vendor">
-          <el-select v-model="profileForm.vendor" placeholder="选择厂商">
-            <el-option
-              v-for="preset in providerPresets"
-              :key="preset.value"
-              :label="preset.label"
-              :value="preset.value"
-            />
+          <el-select v-model="profileForm.vendor">
+            <el-option v-for="preset in providerPresets" :key="preset.value" :label="preset.label" :value="preset.value" />
           </el-select>
         </el-form-item>
 
         <el-form-item label="Endpoint" prop="endpoint">
-          <el-input v-model="profileForm.endpoint" placeholder="https://api.deepseek.com/v1" />
+          <el-input v-model="profileForm.endpoint" placeholder="https://api.deepseek.com" />
         </el-form-item>
 
         <el-form-item label="Model" prop="model">
-          <el-input v-model="profileForm.model" placeholder="deepseek-chat" />
+          <el-input v-model="profileForm.model" placeholder="deepseek-v4-pro" />
         </el-form-item>
 
         <el-form-item label="API Key" prop="apiKey">
           <el-input
             v-model="profileForm.apiKey"
             :type="profileKeyVisible ? 'text' : 'password'"
-            :placeholder="profileDrawerMode === 'edit' && draftProfileHasKey ? '留空保持现有密钥' : '请输入 API Key'"
+            :placeholder="profileDrawerMode === 'edit' && draftProfileHasKey ? '留空则保留现有 Key' : '请输入 API Key'"
           >
             <template #suffix>
-              <button type="button" class="suffix-toggle" @click="profileKeyVisible = !profileKeyVisible">
+              <button type="button" class="suffix-button" @click="profileKeyVisible = !profileKeyVisible">
                 {{ profileKeyVisible ? '隐藏' : '显示' }}
               </button>
             </template>
@@ -341,13 +373,13 @@
         </el-form-item>
       </el-form>
 
-      <div class="drawer-status">{{ profileTestLabel }}</div>
+      <div class="drawer-status" :class="profileTestState">{{ profileTestText }}</div>
 
       <template #footer>
-        <div class="drawer-footer">
+        <div class="dialog-actions drawer-actions">
           <el-button :loading="profileTestLoading" @click="testProfileConnection">测试连接</el-button>
           <el-button @click="profileDrawerVisible = false">取消</el-button>
-          <el-button type="primary" :loading="profileSaving" @click="saveProfileDrawer">保存方案</el-button>
+          <el-button type="primary" :loading="profileSaving" @click="saveProfileDrawer">保存</el-button>
         </div>
       </template>
     </el-drawer>
@@ -358,11 +390,10 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import QRCode from 'qrcode'
-import { Plus, UserFilled } from '@element-plus/icons-vue'
 import { useSettingsStore } from '../stores/settings.store'
 import type { AppSettings, BiliLoginState, TranslateProfile } from '../../../shared/types'
 
-type SectionKey = 'download' | 'cookieLogin' | 'network' | 'translate' | 'notify'
+type SectionKey = 'download' | 'cookie' | 'bilibili' | 'network' | 'appearance' | 'translate' | 'notify'
 type ProviderKey = 'deepseek' | 'minimax' | 'moonshot' | 'zhipu' | 'custom'
 
 interface ProviderPreset {
@@ -384,24 +415,50 @@ interface ProfileFormState {
 const settingsStore = useSettingsStore()
 const version = ref('1.0.0')
 const draft = reactive<AppSettings>(cloneSettings(settingsStore.settings))
-const savingBusy = ref(false)
-const saveState = ref<'idle' | 'saving' | 'error'>('idle')
-const saveTimer = ref<ReturnType<typeof setTimeout> | null>(null)
-const isSyncingFromStore = ref(false)
-const saveQueued = ref(false)
 
+const sections: Array<{ key: SectionKey; label: string }> = [
+  { key: 'download', label: '下载' },
+  { key: 'cookie', label: 'Cookie' },
+  { key: 'bilibili', label: 'B站登录' },
+  { key: 'network', label: '网络' },
+  { key: 'appearance', label: '外观' },
+  { key: 'translate', label: '翻译' },
+  { key: 'notify', label: '通知' }
+]
+
+const cookieModeOptions = [
+  { label: '自动', value: 'auto' },
+  { label: '浏览器', value: 'browser' },
+  { label: '文件', value: 'file' },
+  { label: '关闭', value: 'none' }
+] as const
+
+const providerPresets: ProviderPreset[] = [
+  { value: 'deepseek', label: 'DeepSeek', endpoint: 'https://api.deepseek.com', model: 'deepseek-v4-pro' },
+  { value: 'minimax', label: 'MiniMax', endpoint: 'https://api.minimaxi.com/v1', model: 'abab6.5s-chat' },
+  { value: 'moonshot', label: 'Moonshot', endpoint: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
+  { value: 'zhipu', label: '智谱 GLM', endpoint: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
+  { value: 'custom', label: '自定义', endpoint: '', model: '' }
+]
 const biliState = ref<BiliLoginState>({ loggedIn: false, expired: false })
+const biliCheckState = ref<'idle' | 'success' | 'error'>('idle')
 const biliCheckText = ref('未检查')
 const biliLoginVisible = ref(false)
 const biliQrLoading = ref(false)
 const biliQrDataUrl = ref('')
 const biliQrKey = ref('')
+const biliLoginMessage = ref('点击登录生成二维码')
 const biliPollTimer = ref<ReturnType<typeof setInterval> | null>(null)
-const biliLoginMessage = ref('点击扫码登录生成二维码。')
 
 const proxyTesting = ref(false)
 const proxyTestState = ref<'idle' | 'success' | 'error'>('idle')
 const proxyTestText = ref('未测试')
+
+const saveState = ref<'idle' | 'saving' | 'error'>('idle')
+const savingBusy = ref(false)
+const saveTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const saveQueued = ref(false)
+const isSyncingFromStore = ref(false)
 
 const profileDrawerVisible = ref(false)
 const profileDrawerMode = ref<'create' | 'edit'>('create')
@@ -412,6 +469,7 @@ const profileTestState = ref<'idle' | 'success' | 'error'>('idle')
 const profileTestText = ref('未测试')
 const profileKeyVisible = ref(false)
 const draftProfileHasKey = ref(false)
+
 const profileForm = reactive<ProfileFormState>({
   id: '',
   name: '',
@@ -421,58 +479,28 @@ const profileForm = reactive<ProfileFormState>({
   apiKey: ''
 })
 
-const sections = [
-  { key: 'download', label: '下载' },
-  { key: 'cookieLogin', label: 'Cookie 与登录' },
-  { key: 'network', label: '网络' },
-  { key: 'translate', label: '翻译' },
-  { key: 'notify', label: '通知' }
-] as const
-
-const providerPresets: ProviderPreset[] = [
-  { value: 'deepseek', label: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-  { value: 'minimax', label: 'MiniMax', endpoint: 'https://api.minimaxi.com/v1', model: 'abab6.5s-chat' },
-  { value: 'moonshot', label: 'Moonshot', endpoint: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
-  { value: 'zhipu', label: '智谱 GLM', endpoint: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
-  { value: 'custom', label: '自定义', endpoint: '', model: '' }
-]
-
 const profileFormRules: FormRules<ProfileFormState> = {
   name: [{ required: true, message: '请输入方案名称', trigger: 'blur' }],
   vendor: [{ required: true, message: '请选择厂商', trigger: 'change' }],
-  endpoint: [
-    { required: true, message: '请输入 Endpoint', trigger: 'blur' },
-    { validator: validateEndpoint, trigger: 'blur' }
-  ],
-  model: [{ required: true, message: '请输入 Model', trigger: 'blur' }],
+  endpoint: [{ validator: validateEndpoint, trigger: ['blur', 'change'] }],
+  model: [{ required: true, message: '请输入模型名称', trigger: 'blur' }],
   apiKey: [{ validator: validateApiKey, trigger: 'blur' }]
 }
 
-const defaultDownloadPath = computed(() => settingsStore.defaultSavePath || '使用系统默认下载目录')
-const biliStateLabel = computed(() => {
+const saveStateText = computed(() => {
+  if (saveState.value === 'saving') return '保存中...'
+  if (saveState.value === 'error') return '保存失败'
+  return '已保存'
+})
+
+const biliStatusText = computed(() => {
   if (!biliState.value.loggedIn) return '未登录'
   return biliState.value.expired ? '已失效' : '已登录'
 })
-
-const biliAccountLabel = computed(() => biliState.value.nickname || 'B 站账号')
-const biliExpiryLabel = computed(() => biliState.value.expiresInText || '未知')
-const biliCookiesPathLabel = computed(() => biliState.value.cookiesPath || '未生成')
-const biliCheckLabel = computed(() => {
-  if (biliCheckText.value === '未检查') return '未检查'
-  return biliCheckText.value
-})
-const biliCheckStateClass = computed(() => ({
-  success: biliCheckLabel.value.includes('通过') || biliCheckLabel.value.includes('可用'),
-  error: biliCheckLabel.value.includes('失效') || biliCheckLabel.value.includes('失败')
-}))
-
-const proxyTestLabel = computed(() => proxyTestText.value)
-const proxyTestStateClass = computed(() => ({
-  success: proxyTestState.value === 'success',
-  error: proxyTestState.value === 'error'
-}))
-
-const profileTestLabel = computed(() => profileTestText.value)
+const biliAccountText = computed(() => biliState.value.nickname || '未登录')
+const biliExpireText = computed(() => formatDateTime(biliState.value.expiresAt))
+const biliRemainText = computed(() => biliState.value.expiresInText || (biliState.value.loggedIn ? '未知' : '未登录'))
+const biliLoginButtonText = computed(() => (biliState.value.loggedIn ? '重新登录' : '扫码登录'))
 
 const notificationChannelModel = computed<string[]>({
   get() {
@@ -501,15 +529,6 @@ watch(
 )
 
 watch(
-  () => draft.downloadNotifications,
-  enabled => {
-    if (!enabled) return
-    if (draft.notificationMode === 'both' || draft.notificationMode === 'system' || draft.notificationMode === 'in-app') return
-    draft.notificationMode = 'system'
-  }
-)
-
-watch(
   () => profileForm.vendor,
   vendor => {
     const preset = providerPresets.find(item => item.value === vendor)
@@ -523,16 +542,29 @@ function cloneSettings(settings: AppSettings): AppSettings {
   return JSON.parse(JSON.stringify(settings)) as AppSettings
 }
 
-function normalizeSettings(next: Partial<AppSettings>): AppSettings {
-  return cloneSettings({
-    ...draft,
-    ...next
-  } as AppSettings)
+function ensureProfiles() {
+  if (!draft.translateProfiles.length) {
+    draft.translateProfiles = [{
+      id: 'deepseek',
+      name: 'DeepSeek',
+      endpoint: 'https://api.deepseek.com',
+      model: 'deepseek-v4-pro',
+      hasKey: false
+    }]
+    draft.activeProfileId = 'deepseek'
+    return
+  }
+
+  if (!draft.activeProfileId || !draft.translateProfiles.some(item => item.id === draft.activeProfileId)) {
+    draft.activeProfileId = draft.translateProfiles[0]?.id || ''
+  }
 }
 
-function normalizeVendor(profile: TranslateProfile): ProviderKey {
-  const found = providerPresets.find(item => item.endpoint === profile.endpoint && item.model === profile.model)
-  return found?.value || 'custom'
+function applyStoreToDraft() {
+  isSyncingFromStore.value = true
+  Object.assign(draft, cloneSettings(settingsStore.settings))
+  ensureProfiles()
+  isSyncingFromStore.value = false
 }
 
 function scheduleSave() {
@@ -540,28 +572,23 @@ function scheduleSave() {
     saveQueued.value = true
     return
   }
-
   if (saveTimer.value) clearTimeout(saveTimer.value)
   saveTimer.value = setTimeout(() => {
     saveTimer.value = null
     void persistSettings()
-  }, 200)
+  }, 220)
 }
 
 async function persistSettings() {
-  if (saveTimer.value) {
-    clearTimeout(saveTimer.value)
-    saveTimer.value = null
-  }
-
   if (savingBusy.value) return
-
   savingBusy.value = true
   saveState.value = 'saving'
+
   try {
     const updated = await settingsStore.saveSettings(cloneSettings(draft))
     isSyncingFromStore.value = true
     Object.assign(draft, cloneSettings(updated))
+    ensureProfiles()
     isSyncingFromStore.value = false
     saveState.value = 'idle'
   } catch {
@@ -587,20 +614,18 @@ async function loadDraft() {
   if (!settingsStore.loaded) {
     await settingsStore.loadFromLocal()
   }
-  isSyncingFromStore.value = true
-  Object.assign(draft, cloneSettings(settingsStore.settings))
-  isSyncingFromStore.value = false
+  applyStoreToDraft()
 }
 
 async function chooseDownloadPath() {
-  const path = await window.api.selectSavePath()
-  if (path) draft.defaultSavePath = path
+  const result = await window.api.selectSavePath()
+  if (result) draft.defaultSavePath = result
 }
 
 async function chooseCookiesFile() {
-  const path = await window.api.selectFilePath()
-  if (path) {
-    draft.cookiesFile = path
+  const result = await window.api.selectFilePath()
+  if (result) {
+    draft.cookiesFile = result
     draft.cookieMode = 'file'
   }
 }
@@ -608,7 +633,8 @@ async function chooseCookiesFile() {
 async function testProxyConnection() {
   proxyTesting.value = true
   proxyTestState.value = 'idle'
-  proxyTestText.value = '测试连接中'
+  proxyTestText.value = '测试中...'
+
   try {
     const result = await window.api.testProxy(draft.proxy.trim())
     proxyTestState.value = result.ok ? 'success' : 'error'
@@ -621,18 +647,27 @@ async function testProxyConnection() {
   }
 }
 
+async function refreshBiliState() {
+  try {
+    biliState.value = await window.api.getBiliState()
+  } catch {
+    biliState.value = { loggedIn: false, expired: false }
+  }
+}
+
 async function checkBiliStatus() {
   try {
     const [state, expired] = await Promise.all([
       window.api.getBiliState(),
       window.api.checkBiliCookies()
     ])
+
     biliState.value = state
-    biliCheckText.value = expired ? 'Cookie 已失效' : 'Cookie 可用'
-    ElMessage.success(biliCheckText.value)
+    biliCheckState.value = expired ? 'error' : 'success'
+    biliCheckText.value = !state.loggedIn ? '未登录' : expired ? 'Cookie 已失效' : 'Cookie 可用'
   } catch (error) {
+    biliCheckState.value = 'error'
     biliCheckText.value = error instanceof Error ? error.message : '检查失败'
-    ElMessage.error(biliCheckText.value)
   }
 }
 
@@ -645,6 +680,7 @@ async function refreshBiliQr() {
   stopBiliPolling()
   biliQrLoading.value = true
   biliLoginMessage.value = '正在生成二维码...'
+
   try {
     const result = await window.api.generateBiliQr()
     biliQrKey.value = result.qrcode_key
@@ -653,10 +689,10 @@ async function refreshBiliQr() {
       margin: 1,
       width: 220
     })
-    biliLoginMessage.value = '请使用 Bilibili App 扫码，并在手机上确认。'
+    biliLoginMessage.value = '请使用 Bilibili App 扫码确认。'
     startBiliPolling()
   } catch (error) {
-    biliLoginMessage.value = error instanceof Error ? error.message : '生成二维码失败'
+    biliLoginMessage.value = error instanceof Error ? error.message : '二维码生成失败'
     ElMessage.error(biliLoginMessage.value)
   } finally {
     biliQrLoading.value = false
@@ -665,16 +701,20 @@ async function refreshBiliQr() {
 
 function startBiliPolling() {
   if (!biliQrKey.value) return
+
   biliPollTimer.value = setInterval(async () => {
     try {
       const result = await window.api.pollBiliLogin(biliQrKey.value)
       if (result.status === 'confirmed') {
         stopBiliPolling()
         biliLoginMessage.value = '登录成功'
-        await checkBiliStatus()
-        ElMessage.success('B 站登录成功')
+        biliLoginVisible.value = false
+        await refreshBiliState()
+        biliCheckState.value = 'success'
+        biliCheckText.value = 'Cookie 可用'
+        ElMessage.success('B站登录成功')
       } else if (result.status === 'scanned') {
-        biliLoginMessage.value = '已扫码，等待确认...'
+        biliLoginMessage.value = '已扫码，请在手机上确认。'
       } else if (result.status === 'expired') {
         stopBiliPolling()
         biliLoginMessage.value = '二维码已过期，请刷新。'
@@ -684,7 +724,6 @@ function startBiliPolling() {
     }
   }, 2000)
 }
-
 function stopBiliPolling() {
   if (biliPollTimer.value) {
     clearInterval(biliPollTimer.value)
@@ -694,19 +733,25 @@ function stopBiliPolling() {
 
 async function clearBiliLogin() {
   try {
-    await ElMessageBox.confirm('确定清除本地保存的 B 站登录 Cookie 吗？', '清除登录', {
+    await ElMessageBox.confirm('确定退出当前 B站 登录吗？本地 Cookie 会被删除。', '退出登录', {
       type: 'warning',
-      confirmButtonText: '清除',
-      cancelButtonText: '取消',
-      confirmButtonClass: 'danger-light-button'
+      confirmButtonText: '退出登录',
+      cancelButtonText: '取消'
     })
   } catch {
     return
   }
 
   await window.api.clearBiliCookies()
-  await checkBiliStatus()
-  ElMessage.success('已清除登录')
+  biliState.value = { loggedIn: false, expired: false }
+  biliCheckState.value = 'idle'
+  biliCheckText.value = '未登录'
+  ElMessage.success('已退出 B站 登录')
+}
+
+function normalizeVendor(profile: TranslateProfile): ProviderKey {
+  const preset = providerPresets.find(item => item.endpoint === profile.endpoint && item.model === profile.model)
+  return preset?.value || 'custom'
 }
 
 function openProfileDrawer(profile?: TranslateProfile) {
@@ -730,9 +775,8 @@ function openProfileDrawer(profile?: TranslateProfile) {
   profileForm.id = `profile-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
   profileForm.name = '新方案'
   profileForm.vendor = 'deepseek'
-  const preset = providerPresets[0]
-  profileForm.endpoint = preset.endpoint
-  profileForm.model = preset.model
+  profileForm.endpoint = providerPresets[0].endpoint
+  profileForm.model = providerPresets[0].model
   profileForm.apiKey = ''
   draftProfileHasKey.value = false
 }
@@ -750,11 +794,10 @@ function duplicateProfile(profile: TranslateProfile) {
 
 async function removeProfile(profile: TranslateProfile) {
   try {
-    await ElMessageBox.confirm(`确定删除翻译方案「${profile.name || '未命名方案'}」吗？`, '删除方案', {
+    await ElMessageBox.confirm(`确定删除翻译方案“${profile.name || '未命名方案'}”吗？`, '删除方案', {
       type: 'warning',
       confirmButtonText: '删除',
-      cancelButtonText: '取消',
-      confirmButtonClass: 'danger-light-button'
+      cancelButtonText: '取消'
     })
   } catch {
     return
@@ -775,14 +818,14 @@ async function testProfileConnection() {
 
   profileTestLoading.value = true
   profileTestState.value = 'idle'
-  profileTestText.value = '测试连接中'
+  profileTestText.value = '测试中...'
+
   try {
-    const key = profileForm.apiKey.trim()
-    if (key) {
+    if (profileForm.apiKey.trim()) {
       const result = await window.api.testTranslateProfile({
         endpoint: profileForm.endpoint.trim(),
         model: profileForm.model.trim(),
-        apiKey: key
+        apiKey: profileForm.apiKey.trim()
       })
       profileTestState.value = result.ok ? 'success' : 'error'
       profileTestText.value = result.message
@@ -831,6 +874,9 @@ async function saveProfileDrawer() {
       draft.translateProfiles[index] = normalized
     } else {
       draft.translateProfiles.push(normalized)
+    }
+
+    if (!draft.activeProfileId) {
       draft.activeProfileId = normalized.id
     }
 
@@ -838,14 +884,16 @@ async function saveProfileDrawer() {
       await settingsStore.setApiKey(normalized.id, profileForm.apiKey.trim())
       normalized.hasKey = true
       const nextIndex = draft.translateProfiles.findIndex(item => item.id === normalized.id)
-      if (nextIndex >= 0) draft.translateProfiles[nextIndex].hasKey = true
+      if (nextIndex >= 0) {
+        draft.translateProfiles[nextIndex].hasKey = true
+      }
     }
 
     await persistSettings()
     profileDrawerVisible.value = false
     ElMessage.success('翻译方案已保存')
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '保存翻译方案失败')
+    ElMessage.error(error instanceof Error ? error.message : '保存失败')
   } finally {
     profileSaving.value = false
   }
@@ -857,10 +905,11 @@ function validateEndpoint(_rule: unknown, value: string, callback: (err?: Error)
     callback(new Error('请输入 Endpoint'))
     return
   }
+
   try {
     const url = new URL(text)
     if (!['http:', 'https:'].includes(url.protocol)) {
-      callback(new Error('Endpoint 仅支持 http 与 https'))
+      callback(new Error('Endpoint 仅支持 http 或 https'))
       return
     }
     callback()
@@ -875,14 +924,14 @@ function validateApiKey(_rule: unknown, value: string, callback: (err?: Error) =
     return
   }
   if (value.trim().length < 8) {
-    callback(new Error('API Key 太短，请检查后再保存'))
+    callback(new Error('API Key 太短，请检查后重试'))
     return
   }
   callback()
 }
 
 function formatDateTime(value?: string) {
-  if (!value) return '未知'
+  if (!value) return '未登录'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '未知'
   return date.toLocaleString('zh-CN', {
@@ -897,6 +946,7 @@ function formatDateTime(value?: string) {
 onMounted(async () => {
   await loadDraft()
   await refreshMeta()
+  await refreshBiliState()
   await checkBiliStatus()
 })
 
@@ -904,72 +954,88 @@ onBeforeUnmount(() => {
   if (saveTimer.value) clearTimeout(saveTimer.value)
   stopBiliPolling()
 })
-
-watch(
-  () => [
-    settingsStore.themeMode,
-    settingsStore.accentColor,
-    settingsStore.density,
-    settingsStore.appLanguage
-  ],
-  () => {
-    // settings are applied by App.vue; this watch keeps the store warm for live updates
-  }
-)
 </script>
 
 <style scoped>
 .settings-page {
   height: 100%;
-  min-height: 100%;
-  padding: 18px clamp(14px, 2.2vw, 24px) 20px;
+  padding: 20px 24px 28px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   background: var(--vb-bg);
-  color: var(--vb-text);
-  box-sizing: border-box;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.page-header p {
+  margin: 6px 0 0;
+  color: var(--vb-text-secondary);
+  font-size: 13px;
+}
+
+.header-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: var(--vb-text-tertiary);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .settings-content {
   flex: 1;
   min-height: 0;
-  min-width: 0;
   overflow: auto;
-}
-
-.content-inner {
-  width: 100%;
-  max-width: 1240px;
-  padding: 4px 0 8px;
+  padding-right: 4px;
 }
 
 .settings-section {
-  padding: 0 clamp(6px, 1.6vw, 18px) 8px clamp(8px, 1.8vw, 22px);
+  border-top: 1px solid var(--vb-border-light);
 }
 
 .section-header {
-  padding: 14px 0 8px;
+  padding: 18px 0 10px;
 }
 
 .section-header h2 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 650;
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.section-rows {
-  border-top: 1px solid var(--vb-border-light);
+.section-body {
+  border-bottom: 1px solid var(--vb-border-light);
 }
 
 .setting-row {
+  min-height: 72px;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(280px, 460px);
-  gap: 18px;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 480px);
+  gap: 20px;
   align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--vb-border-light);
-  min-height: 60px;
+  padding: 14px 0;
+  border-top: 1px solid var(--vb-border-light);
+}
+
+.setting-row:first-child {
+  border-top: 0;
+}
+
+.setting-row--stack {
+  align-items: start;
 }
 
 .setting-copy {
@@ -980,155 +1046,128 @@ watch(
 
 .setting-copy strong {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .setting-copy span {
   color: var(--vb-text-secondary);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .setting-control {
   display: flex;
   justify-content: flex-end;
-  min-width: 0;
-}
-
-.control-field {
-  width: 100%;
-}
-
-.choice-group {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.path-control {
-  display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 10px;
-  width: 100%;
-}
-
-.path-input {
-  flex: 1;
   min-width: 0;
 }
 
-.path-input :deep(.el-input__inner) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.setting-row--bili {
-  min-height: 94px;
-}
-
-.bili-status {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.setting-control :deep(.el-input),
+.setting-control :deep(.el-select) {
   width: 100%;
 }
 
-.bili-status__grid {
+.compact-control {
+  max-width: 220px;
+}
+
+.wide-control {
+  width: 100%;
+}
+
+.action-control {
+  justify-content: flex-start;
+}
+
+.stacked-control {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.status-grid {
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 14px;
 }
 
-.bili-status__grid div {
+.status-grid div {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
-.bili-status__grid span {
+.status-grid span {
   color: var(--vb-text-tertiary);
   font-size: 11px;
 }
 
-.bili-status__grid strong {
+.status-grid strong {
   font-size: 13px;
-  font-weight: 500;
-  word-break: break-all;
-}
-
-.bili-status__path {
-  grid-column: 1 / -1;
+  font-weight: 600;
+  word-break: break-word;
 }
 
 .inline-actions {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 10px;
 }
 
-.inline-actions--left {
-  justify-content: flex-start;
-}
-
-.inline-result {
-  color: var(--vb-text-tertiary);
+.inline-note {
   font-size: 12px;
+  color: var(--vb-text-tertiary);
 }
 
-.inline-result.success,
-.status-note.success {
+.inline-note.success,
+.save-state.idle,
+.drawer-status.success {
   color: var(--vb-success);
 }
 
-.inline-result.error,
-.status-note.error {
+.inline-note.error,
+.save-state.error,
+.drawer-status.error {
   color: var(--vb-danger);
 }
 
-.status-note {
-  color: var(--vb-text-tertiary);
-  font-size: 12px;
-}
-
-.translate-toolbar {
-  display: flex;
-  justify-content: flex-start;
-  padding: 12px 0 8px;
+.save-state.saving {
+  color: var(--vb-text-secondary);
 }
 
 .translate-list {
-  border-top: 1px solid var(--vb-border-light);
-  overflow-x: auto;
+  padding: 4px 0 12px;
 }
 
 .empty-state {
-  padding: 16px 0 6px;
+  padding: 8px 0;
   color: var(--vb-text-secondary);
   font-size: 13px;
+}
+
+.translate-table {
+  overflow-x: auto;
 }
 
 .translate-head,
 .translate-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 120px 150px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 130px 170px;
   gap: 12px;
   align-items: center;
   min-width: 720px;
 }
 
 .translate-head {
-  padding: 12px 0;
+  padding: 8px 0 10px;
   color: var(--vb-text-tertiary);
   font-size: 12px;
-  border-bottom: 1px solid var(--vb-border-light);
 }
 
 .translate-row {
   padding: 12px 0;
-  border-bottom: 1px solid var(--vb-border-light);
+  border-top: 1px solid var(--vb-border-light);
   font-size: 13px;
 }
 
@@ -1145,7 +1184,6 @@ watch(
 
 .translate-name strong {
   font-size: 14px;
-  font-weight: 500;
 }
 
 .translate-name span {
@@ -1164,161 +1202,98 @@ watch(
   flex-wrap: wrap;
 }
 
-.checkbox-group {
+.qr-dialog {
   display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
   gap: 12px;
 }
 
-.qr-dialog__body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.qr-dialog__canvas {
+.qr-box {
   width: 220px;
   height: 220px;
-  align-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--vb-border-light);
-  background: var(--vb-bg-surface);
+  border-radius: 12px;
+  background: #fff;
 }
 
-.qr-dialog__canvas img {
+.qr-box img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.qr-placeholder {
-  color: var(--vb-text-tertiary);
-  font-size: 12px;
-}
-
-.qr-dialog__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.qr-dialog__meta p {
-  margin: 0;
-  color: var(--vb-text-secondary);
-  font-size: 12px;
-}
-
+.qr-placeholder,
+.qr-tip,
+.qr-state,
 .drawer-status {
-  padding: 0 24px 12px;
   color: var(--vb-text-secondary);
   font-size: 12px;
 }
 
-.drawer-footer {
+.qr-tip,
+.qr-state {
+  margin: 0;
+  text-align: center;
+}
+
+.dialog-actions {
+  width: 100%;
   display: flex;
   justify-content: flex-end;
-  flex-wrap: wrap;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-.profile-form {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.drawer-actions {
+  justify-content: flex-end;
 }
 
-.suffix-toggle {
+.suffix-button {
   border: 0;
   background: transparent;
   color: var(--vb-accent);
   cursor: pointer;
-  font: inherit;
   padding: 0;
+  font: inherit;
 }
 
-:global(.danger-light-button) {
-  color: var(--vb-danger) !important;
-  border-color: rgba(239, 68, 68, 0.24) !important;
-  background: rgba(239, 68, 68, 0.06) !important;
-}
-
-:global(.danger-light-button:hover) {
-  background: rgba(239, 68, 68, 0.1) !important;
-  border-color: rgba(239, 68, 68, 0.32) !important;
-}
-
-@media (max-width: 1120px) {
+@media (max-width: 960px) {
   .setting-row {
     grid-template-columns: 1fr;
   }
 
-  .setting-control {
+  .setting-control,
+  .translate-actions {
     justify-content: flex-start;
   }
 
-  .choice-group,
-  .inline-actions,
-  .translate-actions,
-  .checkbox-group {
-    justify-content: flex-start;
-  }
-
-  .content-inner {
-    max-width: none;
-  }
-
-  .translate-head,
-  .translate-row {
-    min-width: 680px;
+  .compact-control {
+    max-width: 100%;
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 720px) {
   .settings-page {
-    padding: 14px 12px 18px;
+    padding: 16px;
   }
 
-  .settings-section {
-    padding: 0 4px 8px;
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .bili-status__grid {
+  .status-grid {
     grid-template-columns: 1fr;
   }
 
-  .path-control > * {
-    width: 100%;
-  }
-
-  .path-control :deep(.el-button),
-  .inline-actions :deep(.el-button) {
-    min-width: 0;
-  }
-
-  .qr-dialog__canvas {
+  .qr-box {
     width: min(220px, 100%);
     height: auto;
     aspect-ratio: 1 / 1;
   }
 }
-
-@media (max-width: 640px) {
-  .translate-head,
-  .translate-row {
-    min-width: 620px;
-  }
-
-  .drawer-footer {
-    justify-content: flex-start;
-  }
-}
 </style>
-
-
-
-
-
-

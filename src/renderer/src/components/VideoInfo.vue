@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div v-if="info" class="video-info-card">
     <div class="video-info-main">
       <div class="vi-thumb">
@@ -20,7 +20,7 @@
         <div class="vi-meta">
           <span class="meta-item">
             <el-icon><User /></el-icon>
-            {{ info.uploader || "未知" }}
+            {{ info.uploader || '未知作者' }}
           </span>
           <span class="meta-sep"></span>
           <span class="meta-item">
@@ -33,12 +33,12 @@
           <p class="vi-desc-preview">{{ descriptionPreview }}</p>
           <div class="desc-actions">
             <button
-              v-if="info.description.length > descriptionLimit"
+              v-if="normalizedDescription.length > descriptionLimit"
               type="button"
               class="desc-toggle"
               @click="descriptionExpanded = !descriptionExpanded"
             >
-              {{ descriptionExpanded ? '收起简介' : '展开简介' }}
+              {{ descriptionExpanded ? '收起' : '展开' }}
             </button>
             <button
               type="button"
@@ -61,103 +61,100 @@
       </div>
     </div>
 
-    <div v-if="descriptionExpanded && info.description" class="vi-desc-full">
+    <div v-if="descriptionExpanded && normalizedDescription" class="vi-desc-full">
       <div class="full-desc-head">
         <span>完整简介</span>
       </div>
-      <p class="full-desc-text">{{ info.description }}</p>
+      <p class="full-desc-text">{{ normalizedDescription }}</p>
     </div>
 
     <div v-if="translatedText && translationExpanded" class="vi-translation-full">
       <div class="full-desc-head">
         <span>翻译结果</span>
       </div>
-      <p class="full-desc-text">
-        {{ translatedText }}
-      </p>
+      <p class="full-desc-text">{{ translatedText }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { ElMessage } from "element-plus";
-import { Film, User, VideoCamera } from "@element-plus/icons-vue";
-import type { VideoParseResult } from "../../../shared/types";
-import { useSettingsStore } from "../stores/settings.store";
+import { computed, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Film, User, VideoCamera } from '@element-plus/icons-vue'
+import type { VideoParseResult } from '../../../shared/types'
+import { useSettingsStore } from '../stores/settings.store'
 
 const props = defineProps<{
-  info: VideoParseResult;
-}>();
+  info: VideoParseResult
+}>()
 
-const settingsStore = useSettingsStore();
-const descriptionLimit = 120;
-const descriptionExpanded = ref(false);
-const translationExpanded = ref(true);
-const translating = ref(false);
-const translatedText = ref("");
+const settingsStore = useSettingsStore()
+const descriptionLimit = 96
+const descriptionExpanded = ref(false)
+const translationExpanded = ref(true)
+const translating = ref(false)
+const translatedText = ref('')
 
-const normalizedDescription = computed(() =>
-  normalizeDescription(props.info.description || ""),
-);
+const normalizedDescription = computed(() => normalizeDescription(props.info.description || ''))
 
 const descriptionPreview = computed(() => {
-  const text = normalizedDescription.value;
-  if (text.length <= descriptionLimit) return text;
-  return `${text.slice(0, descriptionLimit).trimEnd()}...`;
-});
+  const text = normalizedDescription.value
+  if (text.length <= descriptionLimit) return text
+  return `${text.slice(0, descriptionLimit).trimEnd()}...`
+})
 
 watch(
   () => [props.info.title, props.info.description],
   () => {
-    descriptionExpanded.value = false;
-    translationExpanded.value = true;
-    translatedText.value = "";
-  },
-);
+    descriptionExpanded.value = false
+    translationExpanded.value = true
+    translatedText.value = ''
+  }
+)
 
 function normalizeDescription(text: string): string {
   return text
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map((line) => line.replace(/[ \t\u00A0]+/g, " ").trim())
-    .join("\n")
-    .trim();
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(line => line.replace(/[ \t\u00A0]+/g, ' ').trim())
+    .join('\n')
+    .trim()
 }
 
 async function handleTranslate() {
-  if (!props.info.description) return;
+  if (!props.info.description) return
 
-  translating.value = true;
+  translating.value = true
   try {
     if (!settingsStore.loaded) {
-      await settingsStore.loadFromLocal();
+      await settingsStore.loadFromLocal()
     }
 
     const result = await window.api.translateText({
-      text: props.info.description,
-      profileId: settingsStore.activeProfileId || settingsStore.translateProfiles[0]?.id,
-    });
+      text: normalizedDescription.value,
+      profileId: settingsStore.activeProfileId || settingsStore.translateProfiles[0]?.id
+    })
 
-    translatedText.value = result.translatedText;
-    translationExpanded.value = true;
+    translatedText.value = result.translatedText
+    translationExpanded.value = true
   } catch (err) {
-    translatedText.value = "";
-    const message = err instanceof Error ? err.message : "翻译失败";
-    ElMessage.warning(message);
+    translatedText.value = ''
+    const message = err instanceof Error ? err.message : '翻译失败'
+    ElMessage.warning(message)
   } finally {
-    translating.value = false;
+    translating.value = false
   }
 }
 
 function formatDuration(seconds: number): string {
-  if (!seconds) return "";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0)
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${m}:${String(s).padStart(2, "0")}`;
+  if (!seconds) return ''
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 </script>
 
@@ -293,27 +290,7 @@ function formatDuration(seconds: number): string {
   overflow-wrap: anywhere;
 }
 
-.desc-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  min-height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--vb-accent);
-  font-size: 12px;
-  cursor: pointer;
-  line-height: 1;
-  transition: color var(--vb-transition), opacity var(--vb-transition);
-}
-
-.desc-toggle:hover {
-  opacity: 0.82;
-  text-decoration: underline;
-}
-
+.desc-toggle,
 .translate-toggle {
   display: inline-flex;
   align-items: center;
@@ -323,17 +300,28 @@ function formatDuration(seconds: number): string {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--vb-text-secondary);
   font-size: 12px;
   cursor: pointer;
   line-height: 1;
   transition: color var(--vb-transition), opacity var(--vb-transition);
 }
 
-.translate-toggle:hover:not(:disabled) {
+.desc-toggle {
   color: var(--vb-accent);
+}
+
+.translate-toggle {
+  color: var(--vb-text-secondary);
+}
+
+.desc-toggle:hover,
+.translate-toggle:hover:not(:disabled) {
   opacity: 0.82;
   text-decoration: underline;
+}
+
+.translate-toggle:hover:not(:disabled) {
+  color: var(--vb-accent);
 }
 
 .translate-toggle:disabled {
@@ -341,7 +329,8 @@ function formatDuration(seconds: number): string {
   cursor: not-allowed;
 }
 
-.vi-desc-full {
+.vi-desc-full,
+.vi-translation-full {
   padding-top: 12px;
   border-top: 1px solid var(--vb-border-light);
   display: flex;
@@ -350,12 +339,13 @@ function formatDuration(seconds: number): string {
 }
 
 .vi-translation-full {
-  padding-top: 12px;
-  border-top: 1px solid var(--vb-border-light);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   margin-top: 2px;
+}
+
+.full-desc-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vb-text);
 }
 
 .full-desc-text {
@@ -386,12 +376,9 @@ function formatDuration(seconds: number): string {
     height: auto;
   }
 
-  .vi-body {
-    height: auto;
-    overflow: visible;
-  }
-
+  .vi-body,
   .vi-desc {
+    height: auto;
     overflow: visible;
   }
 }

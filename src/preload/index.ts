@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+﻿import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type {
   StartDownloadRequest, HistoryEntry, ProgressPayload,
@@ -6,110 +6,110 @@ import type {
   TranslateRequest, TranslateResult, SavedUrlEntry, PlaylistParseResult
 } from '../shared/types'
 
+function normalizeIpcError(error: unknown, fallback = '请求失败'): Error {
+  const raw = error instanceof Error ? error.message : String(error || '')
+  const message = raw.replace(/^Error invoking remote method '[^']+':\s*/i, '').trim()
+  return new Error(message || fallback)
+}
+
+function invokeSafe<T>(channel: string, payload?: unknown, fallback?: string): Promise<T> {
+  return ipcRenderer.invoke(channel, payload).catch(error => {
+    throw normalizeIpcError(error, fallback)
+  })
+}
+
 const api = {
-  // Video parsing
   parseVideo: (url: string): Promise<VideoParseResult> =>
-    ipcRenderer.invoke('yt-dlp:parse-url', { url }),
+    invokeSafe('yt-dlp:parse-url', { url }, '解析失败'),
   parsePlaylist: (url: string): Promise<PlaylistParseResult> =>
-    ipcRenderer.invoke('yt-dlp:parse-playlist', { url }),
+    invokeSafe('yt-dlp:parse-playlist', { url }, '解析失败'),
 
-  // Download
   startDownload: (opts: StartDownloadRequest): Promise<string> =>
-    ipcRenderer.invoke('download:start', opts),
+    invokeSafe('download:start', opts, '下载任务创建失败'),
   cancelDownload: (taskId: string): Promise<boolean> =>
-    ipcRenderer.invoke('download:cancel', { taskId }),
+    invokeSafe('download:cancel', { taskId }, '取消下载失败'),
   recoverUnfinished: (): Promise<import('../shared/types').DownloadTask[]> =>
-    ipcRenderer.invoke('download:recover'),
+    invokeSafe('download:recover', undefined, '恢复下载失败'),
 
-  // File
   fileExists: (filepath: string): Promise<import('../shared/types').FileOpResult> =>
-    ipcRenderer.invoke('file:exists', { filepath }),
+    invokeSafe('file:exists', { filepath }, '文件检查失败'),
   deleteFile: (filepath: string): Promise<import('../shared/types').FileOpResult> =>
-    ipcRenderer.invoke('file:delete', { filepath }),
+    invokeSafe('file:delete', { filepath }, '删除文件失败'),
   showItemInFolder: (filepath: string): Promise<import('../shared/types').FileOpResult> =>
-    ipcRenderer.invoke('file:showInFolder', { filepath }),
+    invokeSafe('file:showInFolder', { filepath }, '打开文件位置失败'),
 
-  // Dialog
   selectSavePath: (): Promise<string | null> =>
-    ipcRenderer.invoke('dialog:select-path'),
+    invokeSafe('dialog:select-path', undefined, '选择目录失败'),
   selectFilePath: (): Promise<string | null> =>
-    ipcRenderer.invoke('dialog:select-file'),
+    invokeSafe('dialog:select-file', undefined, '选择文件失败'),
   openFileInFolder: (filepath: string): Promise<import('../shared/types').OpenPathResult> =>
-    ipcRenderer.invoke('dialog:open-file', { filepath }),
+    invokeSafe('dialog:open-file', { filepath }, '打开文件失败'),
   resolvePath: (filepath: string): Promise<import('../shared/types').ResolvePathResult> =>
-    ipcRenderer.invoke('path:resolve', { filepath }),
+    invokeSafe('path:resolve', { filepath }, '路径解析失败'),
 
-  // FFmpeg
   convertVideo: (req: {
     inputPath: string
     outputDir?: string
     outputFormat: string
     outputFilename?: string
-  }): Promise<string> => ipcRenderer.invoke('ffmpeg:convert', req),
+  }): Promise<string> => invokeSafe('ffmpeg:convert', req, '视频转换失败'),
   extractAudio: (req: {
     inputPath: string
     outputDir?: string
     outputFormat: string
     outputFilename?: string
-  }): Promise<string> => ipcRenderer.invoke('ffmpeg:extract-audio', req),
+  }): Promise<string> => invokeSafe('ffmpeg:extract-audio', req, '音频提取失败'),
 
-  // History
   getHistory: (): Promise<HistoryEntry[]> =>
-    ipcRenderer.invoke('history:list'),
+    invokeSafe('history:list', undefined, '读取历史失败'),
   addHistory: (entry: HistoryEntry): Promise<void> =>
-    ipcRenderer.invoke('history:add', entry),
+    invokeSafe('history:add', entry, '写入历史失败'),
   deleteHistory: (id: string): Promise<void> =>
-    ipcRenderer.invoke('history:delete', { id }),
+    invokeSafe('history:delete', { id }, '删除历史失败'),
   clearHistory: (): Promise<void> =>
-    ipcRenderer.invoke('history:clear'),
+    invokeSafe('history:clear', undefined, '清空历史失败'),
 
-  // Saved URLs
   getSavedUrls: (): Promise<SavedUrlEntry[]> =>
-    ipcRenderer.invoke('saved-urls:list'),
+    invokeSafe('saved-urls:list', undefined, '读取收藏失败'),
   addSavedUrl: (entry: { url: string; title: string; thumbnail: string; uploader: string }): Promise<SavedUrlEntry> =>
-    ipcRenderer.invoke('saved-urls:add', entry),
+    invokeSafe('saved-urls:add', entry, '添加收藏失败'),
   deleteSavedUrl: (id: string): Promise<void> =>
-    ipcRenderer.invoke('saved-urls:delete', { id }),
+    invokeSafe('saved-urls:delete', { id }, '删除收藏失败'),
   deleteSavedUrlByUrl: (url: string): Promise<boolean> =>
-    ipcRenderer.invoke('saved-urls:delete-by-url', { url }),
+    invokeSafe('saved-urls:delete-by-url', { url }, '取消收藏失败'),
 
-  // Bilibili
   generateBiliQr: (): Promise<import('../shared/types').BiliQrResult> =>
-    ipcRenderer.invoke('bilibili:generate-qr'),
+    invokeSafe('bilibili:generate-qr', undefined, '二维码生成失败'),
   pollBiliLogin: (qrcode_key: string): Promise<import('../shared/types').BiliPollResult> =>
-    ipcRenderer.invoke('bilibili:poll-login', { qrcode_key }),
+    invokeSafe('bilibili:poll-login', { qrcode_key }, '登录状态检查失败'),
   getBiliState: (): Promise<import('../shared/types').BiliLoginState> =>
-    ipcRenderer.invoke('bilibili:get-state'),
+    invokeSafe('bilibili:get-state', undefined, '读取登录状态失败'),
   clearBiliCookies: (): Promise<void> =>
-    ipcRenderer.invoke('bilibili:clear-cookies'),
+    invokeSafe('bilibili:clear-cookies', undefined, '退出登录失败'),
   checkBiliCookies: (): Promise<boolean> =>
-    ipcRenderer.invoke('bilibili:check-cookies'),
+    invokeSafe('bilibili:check-cookies', undefined, 'Cookie 检查失败'),
 
-  // Settings
   getSettings: (): Promise<AppSettings> =>
-    ipcRenderer.invoke('settings:get'),
+    invokeSafe('settings:get', undefined, '读取设置失败'),
   updateSettings: (patch: Partial<AppSettings>): Promise<AppSettings> =>
-    ipcRenderer.invoke('settings:update', patch),
+    invokeSafe('settings:update', patch, '保存设置失败'),
   testProxy: (proxy: string): Promise<import('../shared/types').ProxyTestResult> =>
-    ipcRenderer.invoke('settings:test-proxy', { proxy }),
+    invokeSafe('settings:test-proxy', { proxy }, '代理测试失败'),
   setDeepseekKey: (profileId: string, key: string): Promise<AppSettings> =>
-    ipcRenderer.invoke('translate:set-key', { profileId, key }),
+    invokeSafe('translate:set-key', { profileId, key }, '保存 API Key 失败'),
 
-  // Translation
   translateText: (req: TranslateRequest): Promise<TranslateResult> =>
-    ipcRenderer.invoke('translate:request', req),
+    invokeSafe('translate:request', req, '翻译失败'),
   testTranslateProfile: (req: import('../shared/types').TranslateTestRequest): Promise<import('../shared/types').TranslateTestResult> =>
-    ipcRenderer.invoke('translate:test', req),
+    invokeSafe('translate:test', req, '翻译连接测试失败'),
 
-  // App
   getAppVersion: (): Promise<string> =>
-    ipcRenderer.invoke('app:get-version'),
+    invokeSafe('app:get-version', undefined, '读取版本失败'),
   openExternal: (url: string): Promise<void> =>
-    ipcRenderer.invoke('app:open-external', { url }),
+    invokeSafe('app:open-external', { url }, '打开链接失败'),
   checkVersions: (): Promise<import('../shared/types').VersionCheckResult> =>
-    ipcRenderer.invoke('app:version-check'),
+    invokeSafe('app:version-check', undefined, '检查版本失败'),
 
-  // Event listeners (return unsubscribe function)
   onDownloadProgress: (cb: (data: ProgressPayload) => void): (() => void) => {
     const handler = (_event: IpcRendererEvent, data: ProgressPayload) => cb(data)
     ipcRenderer.on('download:progress', handler)

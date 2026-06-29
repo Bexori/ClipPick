@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <el-config-provider :locale="elementLocale">
     <div class="app-shell" :class="{ 'sidebar-collapsed': collapsed }">
       <aside class="sidebar">
@@ -39,6 +39,27 @@
         </router-view>
       </main>
     </div>
+
+    <el-dialog
+      v-model="releaseDialogVisible"
+      title="版本更新"
+      width="520px"
+      destroy-on-close
+      class="release-dialog"
+    >
+      <div class="release-dialog__meta">当前版本 {{ currentVersion }}</div>
+      <div class="release-dialog__body">
+        <div v-for="section in releaseSections" :key="section.title" class="release-section">
+          <h4>{{ section.title }}</h4>
+          <ul>
+            <li v-for="item in section.items" :key="item">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="closeReleaseDialog">我知道了</el-button>
+      </template>
+    </el-dialog>
   </el-config-provider>
 </template>
 
@@ -58,11 +79,36 @@ const settingsStore = useSettingsStore()
 const collapsed = ref(localStorage.getItem('clippick-sidebar-collapsed') === '1')
 const activeMenu = computed(() => route.path)
 const colorScheme = window.matchMedia('(prefers-color-scheme: dark)')
+const releaseDialogVisible = ref(false)
+const currentVersion = ref('')
+const releaseSections = ref<Array<{ title: string; items: string[] }>>([])
+
 const accentPresets: Record<string, string> = {
   indigo: '#6c5ce7',
   purple: '#8b5cf6',
   cyan: '#06b6d4',
   rose: '#f43f5e'
+}
+
+const releaseNotesMap: Record<string, Array<{ title: string; items: string[] }>> = {
+  '1.2.1': [
+    {
+      title: '本次重点修复',
+      items: [
+        'B站扫码登录与翻译请求改为按设置中的代理单独发起。',
+        '没有配置代理时保持直连，不会强制依赖代理。',
+        '二维码登录和翻译失败时，错误提示更明确，不再直接暴露底层报错。'
+      ]
+    },
+    {
+      title: '体验优化',
+      items: [
+        '字幕下载结果提示更清晰，区分外挂字幕、字幕轨封装成功和封装失败。',
+        '部分设置与登录交互文案做了整理，降低误导性提示。',
+        '升级后首次打开会展示更新内容，且只会在真实升级后的首次启动出现。'
+      ]
+    }
+  ]
 }
 
 const elementLocale = computed(() => {
@@ -129,11 +175,12 @@ function mixHexColor(from: string, to: string, amount: number): string {
 function accentToThemeVars(accent: string) {
   const preset = accentPresets[accent]
   if (preset) {
+    const base = parseHexColor(preset)
     return {
       token: accent,
       accent: preset,
       accentLight: mixHexColor(preset, '#ffffff', 0.15),
-      accentBg: `rgba(${parseHexColor(preset)?.r ?? 108}, ${parseHexColor(preset)?.g ?? 92}, ${parseHexColor(preset)?.b ?? 231}, 0.08)`
+      accentBg: `rgba(${base?.r ?? 108}, ${base?.g ?? 92}, ${base?.b ?? 231}, 0.08)`
     }
   }
 
@@ -167,6 +214,52 @@ function handleColorSchemeChange() {
   }
 }
 
+async function maybeShowReleaseNotes() {
+  try {
+    const version = await window.api.getAppVersion()
+    currentVersion.value = version
+
+    if (!version) return
+
+    const lastRunVersion = localStorage.getItem('clippick-last-run-version') || ''
+    const seenVersion = localStorage.getItem('clippick-last-seen-version') || ''
+
+    localStorage.setItem('clippick-last-run-version', version)
+
+    const upgradedFromPreviousVersion = Boolean(lastRunVersion) && lastRunVersion !== version
+    if (!upgradedFromPreviousVersion || seenVersion === version) return
+
+    releaseSections.value = releaseNotesMap[version] || [
+      {
+        title: '版本已更新',
+        items: ['当前版本已更新到最新安装包，本次更新包含稳定性修复与体验优化。']
+      }
+    ]
+
+    releaseDialogShouldPersist.value = true
+    window.setTimeout(() => {
+      releaseDialogVisible.value = true
+    }, 480)
+  } catch {
+    currentVersion.value = ''
+  }
+}
+
+function persistReleaseDialogSeen() {
+  if (!releaseDialogShouldPersist.value || !currentVersion.value) return
+  localStorage.setItem('clippick-last-seen-version', currentVersion.value)
+  releaseDialogShouldPersist.value = false
+}
+
+function closeReleaseDialog() {
+  persistReleaseDialogSeen()
+  releaseDialogVisible.value = false
+}
+
+function handleReleaseDialogClosed() {
+  persistReleaseDialogSeen()
+}
+
 onMounted(async () => {
   if (!settingsStore.loaded) {
     await settingsStore.loadFromLocal()
@@ -174,6 +267,7 @@ onMounted(async () => {
 
   applyUiSettings()
   colorScheme.addEventListener?.('change', handleColorSchemeChange)
+  await maybeShowReleaseNotes()
 })
 
 watch(
@@ -375,6 +469,35 @@ onBeforeUnmount(() => {
   opacity: 0;
 }
 
+.release-dialog :deep(.el-dialog__body) {
+  padding-top: 8px;
+}
+
+.release-dialog__meta {
+  margin-bottom: 12px;
+  color: var(--vb-text-secondary);
+  font-size: 13px;
+}
+
+.release-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.release-section h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--vb-text);
+}
+
+.release-section ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--vb-text-secondary);
+  line-height: 1.7;
+}
+
 @media (max-width: 900px) {
   .sidebar {
     width: 72px;
@@ -401,3 +524,6 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+
+
+

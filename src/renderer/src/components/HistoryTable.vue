@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="history-table-wrap">
     <el-table
       :data="entries"
@@ -153,8 +153,8 @@ function subtitleText(row: HistoryEntry): string {
   const map: Record<NonNullable<HistoryEntry['subtitleStatus']>, string> = {
     none: '无字幕',
     external: row.subtitleFiles?.length ? `外挂 ${row.subtitleFiles.length}` : '外挂字幕',
-    embedded: '已内嵌',
-    'embed-failed': '嵌入失败'
+    embedded: '已封装',
+    'embed-failed': '封装失败'
   }
   return map[row.subtitleStatus ?? 'none']
 }
