@@ -4,7 +4,7 @@
     <header class="page-header">
       <div>
         <h1>设置</h1>
-        <p>下载、登录、代理、翻译与外观配置会直接保存到本机。</p>
+        <p>下载、登录、代理与翻译配置会直接保存到本机。</p>
       </div>
       <div class="header-meta">
         <span>版本 {{ version }}</span>
@@ -175,60 +175,7 @@
             </div>
           </template>
 
-          <template v-else-if="section.key === 'appearance'">
-            <div class="setting-row">
-              <div class="setting-copy">
-                <strong>界面语言</strong>
-                <span>当前仅设置保存，完整多语言文案尚未全部接入。</span>
-              </div>
-              <div class="setting-control compact-control">
-                <el-select v-model="draft.appLanguage">
-                  <el-option label="跟随系统" value="system" />
-                  <el-option label="简体中文" value="zh-CN" />
-                  <el-option label="English" value="en" />
-                  <el-option label="日本語" value="ja" />
-                </el-select>
-              </div>
-            </div>
 
-            <div class="setting-row">
-              <div class="setting-copy">
-                <strong>主题模式</strong>
-                <span>切换浅色、深色或跟随系统。</span>
-              </div>
-              <div class="setting-control compact-control">
-                <el-select v-model="draft.themeMode">
-                  <el-option label="跟随系统" value="system" />
-                  <el-option label="浅色" value="light" />
-                  <el-option label="深色" value="dark" />
-                </el-select>
-              </div>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-copy">
-                <strong>界面密度</strong>
-                <span>控制列表和表单的紧凑程度。</span>
-              </div>
-              <div class="setting-control compact-control">
-                <el-select v-model="draft.density">
-                  <el-option label="舒适" value="comfortable" />
-                  <el-option label="标准" value="standard" />
-                  <el-option label="紧凑" value="compact" />
-                </el-select>
-              </div>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-copy">
-                <strong>主题色</strong>
-                <span>用于按钮高亮和选中状态。</span>
-              </div>
-              <div class="setting-control compact-control">
-                <el-color-picker v-model="draft.accentColor" />
-              </div>
-            </div>
-          </template>
           <template v-else-if="section.key === 'translate'">
             <div class="setting-row">
               <div class="setting-copy">
@@ -393,7 +340,7 @@ import QRCode from 'qrcode'
 import { useSettingsStore } from '../stores/settings.store'
 import type { AppSettings, BiliLoginState, TranslateProfile } from '../../../shared/types'
 
-type SectionKey = 'download' | 'cookie' | 'bilibili' | 'network' | 'appearance' | 'translate' | 'notify'
+type SectionKey = 'download' | 'cookie' | 'bilibili' | 'network' | 'translate' | 'notify'
 type ProviderKey = 'deepseek' | 'minimax' | 'moonshot' | 'zhipu' | 'custom'
 
 interface ProviderPreset {
@@ -421,7 +368,6 @@ const sections: Array<{ key: SectionKey; label: string }> = [
   { key: 'cookie', label: 'Cookie' },
   { key: 'bilibili', label: 'B站登录' },
   { key: 'network', label: '网络' },
-  { key: 'appearance', label: '外观' },
   { key: 'translate', label: '翻译' },
   { key: 'notify', label: '通知' }
 ]
@@ -1297,3 +1243,4 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+
