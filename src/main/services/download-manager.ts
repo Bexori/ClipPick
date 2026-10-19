@@ -39,6 +39,7 @@ interface ManagedDownload {
   outputPath: string
   destLine: string
   req: StartDownloadRequest
+  cookieFallbackTried: boolean
 }
 
 interface QueuedDownload {
@@ -95,7 +96,8 @@ export class DownloadManager {
       totalBytes: 0,
       outputPath: '',
       destLine: '',
-      req
+      req,
+      cookieFallbackTried: false
     }
 
     this.downloads.set(taskId, managed)
@@ -141,6 +143,7 @@ export class DownloadManager {
           title: entry.req.filename,
           thumbnail: '',
           url: entry.req.url,
+          duration: 0,
           formatId: entry.req.formatId,
           formatLabel: '',
           outputDir: entry.req.outputDir,
@@ -206,8 +209,22 @@ export class DownloadManager {
         n.show()
       }
     } else if (managed.status !== 'cancelled') {
-      managed.status = 'error'
       const detail = output.stderr.trim()
+
+      if (this.shouldRetryWithoutBrowserCookies(managed, detail)) {
+        logger.warn(`Download browser cookie read failed, retrying without browser cookies: ${managed.taskId}`)
+        managed.cookieFallbackTried = true
+        managed.progress = 0
+        managed.speed = ''
+        managed.eta = ''
+        managed.downloadedBytes = 0
+        managed.totalBytes = 0
+        managed.destLine = ''
+        this.startDownloadInternal(managed.taskId, managed.req, win)
+        return
+      }
+
+      managed.status = 'error'
       logger.error(`Download failed: ${managed.taskId} (code=${code}) ${detail}`)
       win.webContents.send('download:error', {
         taskId: managed.taskId,
@@ -229,7 +246,11 @@ export class DownloadManager {
 
     const filename = this.buildOutputBasename(req)
     const outputTemplate = `${req.outputDir}\\${filename}.%(ext)s`
-    const args = buildDownloadArgs(req.url, req.formatId, outputTemplate, this.ffmpegPath, this.settings.get(), {
+    const currentSettings = this.settings.get()
+    const effectiveSettings = managed.cookieFallbackTried
+      ? { ...currentSettings, cookieMode: 'auto' as const, cookiesFile: '' }
+      : currentSettings
+    const args = buildDownloadArgs(req.url, req.formatId, outputTemplate, this.ffmpegPath, effectiveSettings, {
       writeSubs: req.writeSubs,
       writeAutoSubs: req.writeAutoSubs,
       subLangs: req.subLangs,
@@ -290,14 +311,14 @@ export class DownloadManager {
   ): void {
     let buffer = ''
 
-    proc.stdout.on('data', (data: Buffer) => {
+    proc.stdout!.on('data', (data: Buffer) => {
       buffer += data.toString()
       const lines = buffer.split('\n')
       buffer = lines.pop() || ''
       for (const line of lines) this.handleOutputLine(line, managed, win)
     })
 
-    proc.stderr.on('data', (data: Buffer) => {
+    proc.stderr!.on('data', (data: Buffer) => {
       const text = data.toString()
       output.stderr += text
       for (const line of text.split('\n')) this.handleOutputLine(line, managed, win)
@@ -410,34 +431,88 @@ export class DownloadManager {
 
   // ========== Helpers ==========
 
+  private shouldRetryWithoutBrowserCookies(managed: ManagedDownload, stderr: string): boolean {
+    if (managed.cookieFallbackTried) return false
+    if (this.settings.get().cookieMode !== 'browser') return false
+    if (!this.isYoutubeUrl(managed.req.url)) return false
+    return stderr.includes('Could not copy Chrome cookie database') ||
+      stderr.includes('unable to read browser cookies')
+  }
+
+  private isYoutubeUrl(url: string): boolean {
+    try {
+      const hostname = new URL(url).hostname.toLowerCase()
+      return hostname.includes('youtube.com') || hostname === 'youtu.be'
+    } catch {
+      return false
+    }
+  }
+
+  private extractMeaningfulDownloadError(stderr: string): string | null {
+    const lines = stderr
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean)
+
+    const ignoredPrefixes = [
+      '[download]',
+      '[debug]',
+      'warning: your yt-dlp version',
+      'it is strongly recommended',
+      'run "yt-dlp --update"',
+      'to suppress this warning'
+    ]
+
+    const preferred = lines.find(line => /^(error:|download failed:|unable to|http error|requested format|sign in|forbidden)/i.test(line))
+    if (preferred) return preferred.replace(/^error:\s*/i, "").trim()
+
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i]
+      if (ignoredPrefixes.some(prefix => line.toLowerCase().startsWith(prefix))) continue
+      if (line.length < 6) continue
+      return line.replace(/^error:\s*/i, "").trim()
+    }
+
+    return null
+  }
+
   private formatDownloadError(stderr: string, code: number | null): string {
     if (stderr.includes('Could not copy Chrome cookie database')) {
-      return 'Download failed: unable to read browser cookies. Close the browser or use cookies.txt'
+      return '下载失败：无法读取浏览器 Cookie，请先完全关闭 Chrome 后重试，或改用 cookies.txt'
+    }
+    if (stderr.includes('unable to read browser cookies')) {
+      return '下载失败：浏览器 Cookie 读取失败，请关闭浏览器后重试，或改用 cookies.txt'
     }
     if (stderr.includes('Only images are available') || stderr.includes('No downloadable formats')) {
-      return 'Download failed: no downloadable formats were found'
+      return '下载失败：当前链接没有可下载的视频格式'
     }
     if (stderr.includes('n challenge solving failed') || stderr.includes('No supported JavaScript runtime')) {
-      return 'Download failed: YouTube challenge parsing failed. Install Deno or Node 22+'
+      return '下载失败：站点挑战校验失败，请安装 Deno 或 Node 22+'
     }
     if (stderr.includes('PO Token')) {
-      return 'Download failed: YouTube currently requires a PO Token or login cookie'
+      return '下载失败：YouTube 当前需要 PO Token 或有效登录 Cookie'
     }
-    if (stderr.includes('DRM protected')) return 'Download failed: this video is DRM protected'
+    if (stderr.includes('DRM protected')) return '下载失败：该视频受 DRM 保护'
     if (stderr.includes('Sign in') || stderr.includes('login') || stderr.includes('cookies')) {
-      return 'Download failed: login cookie may be required'
+      return '下载失败：可能需要有效登录 Cookie'
     }
     if (stderr.includes('HTTP Error 403') || stderr.includes('Forbidden')) {
-      return 'Download failed: access was denied. Check your cookie or proxy.'
+      return '下载失败：访问被拒绝，请检查 Cookie 或代理设置'
     }
-    if (stderr.includes('Unsupported URL')) return 'Download failed: unsupported URL'
+    if (stderr.includes('Unsupported URL')) return '下载失败：当前链接暂不支持'
     if (stderr.includes('Video unavailable') || stderr.includes('not available')) {
-      return 'Download failed: video unavailable or region restricted'
+      return '下载失败：视频不可用或受地区限制'
     }
     if (stderr.includes('Requested format is not available')) {
-      return 'Download failed: the selected format is no longer available'
+      return '下载失败：当前选择的格式已不可用，请重新解析后再试'
     }
-    return `Download failed (exit code ${code ?? 'unknown'})`
+
+    const meaningful = this.extractMeaningfulDownloadError(stderr)
+    if (meaningful) {
+      return `下载失败：${meaningful}`
+    }
+
+    return `下载失败（退出码 ${code ?? 'unknown'}）`
   }
 
   private sanitizeFilename(name: string): string {
@@ -575,12 +650,12 @@ function isPersistedEntry(value: unknown): value is PersistedEntry {
   if (!value || typeof value !== 'object') return false
   const entry = value as Partial<PersistedEntry>
   const req = entry.req as Partial<StartDownloadRequest> | undefined
+  if (!req) return false
   return typeof entry.taskId === 'string' &&
     typeof entry.progress === 'number' &&
     typeof entry.downloadedBytes === 'number' &&
     typeof entry.totalBytes === 'number' &&
     typeof entry.status === 'string' &&
-    Boolean(req) &&
     typeof req.url === 'string' &&
     typeof req.formatId === 'string' &&
     typeof req.outputDir === 'string' &&

@@ -29,6 +29,7 @@ export const IpcChannels = {
   // History
   HISTORY_LIST: 'history:list',
   HISTORY_ADD: 'history:add',
+  HISTORY_RENAME: 'history:rename',
   HISTORY_DELETE: 'history:delete',
   HISTORY_CLEAR: 'history:clear',
 
@@ -178,6 +179,7 @@ export interface DownloadTask {
   title: string
   thumbnail: string
   url: string
+  duration: number
   formatId: string
   formatLabel: string
   outputDir: string

@@ -23,6 +23,7 @@ interface VideoBoxApi {
   extractAudio(req: { inputPath: string; outputDir?: string; outputFormat: string; outputFilename?: string }): Promise<string>
   getHistory(): Promise<import('../../shared/types').HistoryEntry[]>
   addHistory(entry: import('../../shared/types').HistoryEntry): Promise<void>
+  renameHistory(id: string, name: string): Promise<import('../../shared/types').HistoryEntry>
   deleteHistory(id: string): Promise<void>
   clearHistory(): Promise<void>
   getSavedUrls(): Promise<import('../../shared/types').SavedUrlEntry[]>

@@ -64,6 +64,8 @@ const api = {
     invokeSafe('history:list', undefined, '读取历史失败'),
   addHistory: (entry: HistoryEntry): Promise<void> =>
     invokeSafe('history:add', entry, '写入历史失败'),
+  renameHistory: (id: string, name: string): Promise<HistoryEntry> =>
+    invokeSafe('history:rename', { id, name }, '重命名文件失败'),
   deleteHistory: (id: string): Promise<void> =>
     invokeSafe('history:delete', { id }, '删除历史失败'),
   clearHistory: (): Promise<void> =>

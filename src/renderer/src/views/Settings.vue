@@ -1,21 +1,13 @@
 ﻿
 <template>
   <div class="settings-page">
-    <header class="page-header">
-      <div>
-        <h1>设置</h1>
-        <p>下载、登录、代理与翻译配置会直接保存到本机。</p>
-      </div>
-      <div class="header-meta">
-        <span>版本 {{ version }}</span>
-        <span :class="['save-state', saveState]">{{ saveStateText }}</span>
-      </div>
-    </header>
-
     <main class="settings-content">
       <section v-for="section in sections" :key="section.key" class="settings-section">
         <header class="section-header">
-          <h2>{{ section.label }}</h2>
+          <div>
+            <h2>{{ section.label }}</h2>
+            <p>{{ section.description }}</p>
+          </div>
         </header>
 
         <div class="section-body">
@@ -121,7 +113,7 @@
             <div class="setting-row setting-row--stack">
               <div class="setting-copy">
                 <strong>B站登录</strong>
-                <span>Cookie 仅保存在本机 `userData/bilibili-cookies.txt`，不会上传到云端。</span>
+                <span>登录信息仅保存在本机，不会上传到云端。</span>
               </div>
               <div class="setting-control stacked-control">
                 <div class="status-grid">
@@ -258,6 +250,14 @@
       </section>
     </main>
 
+    <footer class="settings-footer">
+      <span>ClipPick</span>
+      <div class="header-meta">
+        <span>版本 {{ version }}</span>
+        <span :class="['save-state', saveState]">{{ saveStateText }}</span>
+      </div>
+    </footer>
+
     <el-dialog
       v-model="biliLoginVisible"
       title="B站登录"
@@ -272,6 +272,7 @@
           <div v-else class="qr-placeholder">等待生成二维码</div>
         </div>
         <p class="qr-tip">使用 Bilibili App 扫码并在手机上确认。</p>
+        <p class="qr-tip qr-tip--subtle">若扫码后提示网页无法打开，请检查手机代理 / VPN 是否影响 Bilibili App。</p>
         <p class="qr-state">{{ biliLoginMessage }}</p>
         <div class="dialog-actions">
           <el-button @click="biliLoginVisible = false">关闭</el-button>
@@ -341,7 +342,7 @@ import { useSettingsStore } from '../stores/settings.store'
 import type { AppSettings, BiliLoginState, TranslateProfile } from '../../../shared/types'
 
 type SectionKey = 'download' | 'cookie' | 'bilibili' | 'network' | 'translate' | 'notify'
-type ProviderKey = 'deepseek' | 'minimax' | 'moonshot' | 'zhipu' | 'custom'
+type ProviderKey = 'deepseek' | 'minimax' | 'moonshot' | 'zhipu' | 'xiaomi' | 'custom'
 
 interface ProviderPreset {
   value: ProviderKey
@@ -363,13 +364,13 @@ const settingsStore = useSettingsStore()
 const version = ref('1.0.0')
 const draft = reactive<AppSettings>(cloneSettings(settingsStore.settings))
 
-const sections: Array<{ key: SectionKey; label: string }> = [
-  { key: 'download', label: '下载' },
-  { key: 'cookie', label: 'Cookie' },
-  { key: 'bilibili', label: 'B站登录' },
-  { key: 'network', label: '网络' },
-  { key: 'translate', label: '翻译' },
-  { key: 'notify', label: '通知' }
+const sections: Array<{ key: SectionKey; label: string; description: string }> = [
+  { key: 'download', label: '下载', description: '管理保存位置、并发任务和失败重试。' },
+  { key: 'cookie', label: 'Cookie', description: '为需要登录权限的网站提供本地 Cookie。' },
+  { key: 'bilibili', label: 'B站登录', description: '扫码登录后，可访问需要账号权限的内容。' },
+  { key: 'network', label: '网络', description: '配置代理，并测试当前网络连接。' },
+  { key: 'translate', label: '翻译', description: '配置标题、描述和字幕的翻译方案。' },
+  { key: 'notify', label: '通知', description: '设置下载完成后的提醒方式。' }
 ]
 
 const cookieModeOptions = [
@@ -384,6 +385,7 @@ const providerPresets: ProviderPreset[] = [
   { value: 'minimax', label: 'MiniMax', endpoint: 'https://api.minimaxi.com/v1', model: 'abab6.5s-chat' },
   { value: 'moonshot', label: 'Moonshot', endpoint: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
   { value: 'zhipu', label: '智谱 GLM', endpoint: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
+  { value: 'xiaomi', label: 'Xiaomi MiMo', endpoint: 'https://api.xiaomimimo.com/v1', model: 'mimo-v2.5-pro' },
   { value: 'custom', label: '自定义', endpoint: '', model: '' }
 ]
 const biliState = ref<BiliLoginState>({ loggedIn: false, expired: false })
@@ -909,27 +911,8 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   background: var(--vb-bg);
-}
-
-.page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 28px;
-  line-height: 1.1;
-}
-
-.page-header p {
-  margin: 6px 0 0;
-  color: var(--vb-text-secondary);
-  font-size: 13px;
 }
 
 .header-meta {
@@ -941,19 +924,38 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 0 2px;
+  color: var(--vb-text-tertiary);
+  font-size: 12px;
+}
+
 .settings-content {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding-right: 4px;
+  padding: 2px 4px 10px 2px;
 }
 
 .settings-section {
-  border-top: 1px solid var(--vb-border-light);
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid var(--vb-border-light);
+  border-radius: 12px;
+  background: var(--vb-bg-surface);
 }
 
 .section-header {
-  padding: 18px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 13px;
+  background: var(--vb-bg-elevated);
 }
 
 .section-header h2 {
@@ -962,8 +964,15 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
+.section-header p {
+  margin: 4px 0 0;
+  color: var(--vb-text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .section-body {
-  border-bottom: 1px solid var(--vb-border-light);
+  padding: 0 18px;
 }
 
 .setting-row {
@@ -1099,7 +1108,7 @@ onBeforeUnmount(() => {
 .translate-head,
 .translate-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 130px 170px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) 130px 220px;
   gap: 12px;
   align-items: center;
   min-width: 720px;
@@ -1144,15 +1153,23 @@ onBeforeUnmount(() => {
 .translate-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.translate-actions :deep(.el-button) {
+  margin-left: 0;
+  padding: 0 4px;
 }
 
 .qr-dialog {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  padding: 4px 8px 2px;
 }
 
 .qr-box {
@@ -1184,6 +1201,12 @@ onBeforeUnmount(() => {
 .qr-state {
   margin: 0;
   text-align: center;
+  max-width: 320px;
+}
+
+.qr-tip--subtle {
+  color: var(--vb-text-tertiary);
+  line-height: 1.6;
 }
 
 .dialog-actions {
@@ -1227,11 +1250,6 @@ onBeforeUnmount(() => {
     padding: 16px;
   }
 
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .status-grid {
     grid-template-columns: 1fr;
   }
@@ -1240,6 +1258,12 @@ onBeforeUnmount(() => {
     width: min(220px, 100%);
     height: auto;
     aspect-ratio: 1 / 1;
+  }
+
+  .settings-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 }
 </style>

@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, safeStorage } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import type { AppSettings } from '../../shared/types'
@@ -125,7 +125,31 @@ export class SettingsService {
     try {
       if (!fs.existsSync(this.apiKeysPath)) return
       const raw = fs.readFileSync(this.apiKeysPath, 'utf-8')
-      const parsed = JSON.parse(raw)
+      let parsed: unknown
+
+      // New format: values are encrypted with the OS-provided key store.
+      if (safeStorage.isEncryptionAvailable()) {
+        const encrypted = JSON.parse(raw)
+        if (encrypted && typeof encrypted === 'object' && encrypted.format === 'safeStorage' && encrypted.data && typeof encrypted.data === 'object') {
+          parsed = Object.fromEntries(
+            Object.entries(encrypted.data as Record<string, unknown>).flatMap(([profileId, value]) => {
+              if (typeof value !== 'string') return []
+              try {
+                return [[profileId, safeStorage.decryptString(Buffer.from(value, 'base64'))]]
+              } catch {
+                return []
+              }
+            })
+          )
+        } else {
+          parsed = encrypted
+        }
+      } else {
+        // Legacy plaintext format is still readable so existing users do not
+        // lose their keys; the next save migrates it when safeStorage is available.
+        parsed = JSON.parse(raw)
+      }
+
       this.apiKeys = parsed && typeof parsed === 'object' ? parsed as Record<string, string> : {}
     } catch {
       this.apiKeys = {}
@@ -157,7 +181,18 @@ export class SettingsService {
     try {
       const dir = path.dirname(this.apiKeysPath)
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-      fs.writeFileSync(this.apiKeysPath, JSON.stringify(this.apiKeys, null, 2), 'utf-8')
+
+      if (safeStorage.isEncryptionAvailable()) {
+        const encrypted = Object.fromEntries(
+          Object.entries(this.apiKeys).map(([profileId, value]) => [
+            profileId,
+            safeStorage.encryptString(value).toString('base64')
+          ])
+        )
+        fs.writeFileSync(this.apiKeysPath, JSON.stringify({ format: 'safeStorage', data: encrypted }, null, 2), 'utf-8')
+      } else {
+        fs.writeFileSync(this.apiKeysPath, JSON.stringify(this.apiKeys, null, 2), 'utf-8')
+      }
     } catch (err) {
       console.error('Failed to save API keys:', err)
     }

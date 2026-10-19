@@ -4,6 +4,8 @@
       :data="entries"
       v-loading="loading"
       stripe
+      height="100%"
+      :fit="false"
       style="width: 100%"
       empty-text="暂无下载记录"
       :default-sort="{ prop: 'downloadedAt', order: 'descending' }"
@@ -76,6 +78,7 @@
             :row="row"
             @open-location="$emit('openLocation', $event)"
             @process="$emit('process', $event)"
+            @rename="$emit('rename', $event)"
             @delete="$emit('delete', $event)"
           />
         </template>
@@ -100,6 +103,7 @@ withDefaults(defineProps<{
 defineEmits<{
   openLocation: [row: HistoryEntry]
   process: [row: HistoryEntry]
+  rename: [row: HistoryEntry]
   delete: [row: HistoryEntry]
 }>()
 
@@ -172,13 +176,49 @@ function subtitleTagType(status: HistoryEntry['subtitleStatus']): 'info' | 'succ
 
 <style scoped>
 .history-table-wrap {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  height: 0;
+  overflow: hidden;
   scrollbar-gutter: stable;
   background: transparent;
   border: 0;
   border-radius: 0;
+}
+
+:deep(.el-table) {
+  width: 100%;
+}
+
+:deep(.el-table__header table),
+:deep(.el-table__body table),
+:deep(.el-table__footer table) {
+  min-width: 1146px !important;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar),
+:deep(.el-table__header-wrapper::-webkit-scrollbar),
+:deep(.el-table__footer-wrapper::-webkit-scrollbar) {
+  height: 5px;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-track),
+:deep(.el-table__header-wrapper::-webkit-scrollbar-track),
+:deep(.el-table__footer-wrapper::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb),
+:deep(.el-table__header-wrapper::-webkit-scrollbar-thumb),
+:deep(.el-table__footer-wrapper::-webkit-scrollbar-thumb) {
+  background: #c9cdd4;
+  border-radius: 999px;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb:hover),
+:deep(.el-table__header-wrapper::-webkit-scrollbar-thumb:hover),
+:deep(.el-table__footer-wrapper::-webkit-scrollbar-thumb:hover) {
+  background: #aeb4bf;
 }
 
 .thumb-img {
@@ -222,6 +262,7 @@ function subtitleTagType(status: HistoryEntry['subtitleStatus']): 'info' | 'succ
 :deep(.el-table__body td .cell) {
   font-size: 13px;
 }
+
 </style>
 
 <style>

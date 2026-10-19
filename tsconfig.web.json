@@ -9,7 +9,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "types": ["vue/macros"],
     "paths": {
       "@/*": ["./src/renderer/src/*"]
     }

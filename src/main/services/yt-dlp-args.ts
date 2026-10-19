@@ -102,9 +102,20 @@ function getDenoPath(): string | null {
   return null
 }
 
+const URL_PATTERN = /https?:\/\/[^\s"'<>]+/i
+
+function trimExtractedUrl(url: string): string {
+  return url.replace(/[^A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$/g, '')
+}
+
 export function extractUrl(text: string): string {
-  const match = text.match(/https?:\/\/[^\s，,]+/)
-  return match ? match[0].replace(/[，。,\.]+$/, '') : text.trim().split(/\s+/)[0]
+  const normalized = text.replace(/\u200B/g, ' ').trim()
+  const match = normalized.match(URL_PATTERN)
+  if (match) {
+    return trimExtractedUrl(match[0])
+  }
+
+  return normalized.split(/\s+/)[0]
 }
 
 export function buildParseAttempts(url: string, settings: AppSettings = defaultSettings): Attempt[] {
@@ -312,8 +323,9 @@ function buildAttempts(url: string, settings: AppSettings): Attempt[] {
   const common = buildCommonArgs(url, settings)
   const site = detectSite(url)
   const cookieMode = settings.cookieMode
-  const browserArgs = cookieMode === 'browser'
-    ? getCookieBrowserCandidates(settings).map((browser) => ({
+  const cookieBrowsers = getCookieBrowserCandidates(settings)
+  const browserArgs = cookieMode === 'browser' || (cookieMode === 'auto' && site === 'douyin')
+    ? cookieBrowsers.map((browser) => ({
       label: `cookies:${browser}`,
       args: [...common, '--cookies-from-browser', browser]
     }))
@@ -418,7 +430,6 @@ function getCookieBrowserCandidates(settings: AppSettings): CookieBrowser[] {
   if (os.platform() !== 'win32') return []
 
   if (settings.cookieMode === 'browser') {
-    if (settings.cookieBrowser === 'chrome') return []
     const selected = candidates.find(([browser]) => browser === settings.cookieBrowser)
     return selected && fs.existsSync(selected[1]) ? [selected[0] as CookieBrowser] : []
   }

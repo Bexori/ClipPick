@@ -183,6 +183,7 @@ async function downloadSelected() {
         title: result.title,
         thumbnail: result.thumbnail,
         url: result.webpageUrl || entry.url,
+        duration: result.duration,
         formatId: format.formatId,
         formatLabel,
         outputDir: settingsStore.defaultSavePath,

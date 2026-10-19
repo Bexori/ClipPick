@@ -385,6 +385,7 @@ const entryWriteAutoSubs = ref(true);
 const entrySelectedSubLangs = ref<string[]>([]);
 const entryEmbedSubs = ref(false);
 const biliExpiryWarningToken = ref("");
+const douyinCookieHintToken = ref("");
 const videoInfo = computed(() => downloadStore.videoInfo);
 const visibleTasks = computed(() => downloadStore.tasks);
 const showPlaylistBar = computed(() => {
@@ -453,9 +454,48 @@ async function handlePaste() {
     ElMessage.warning("无法读取剪贴板，请手动粘贴链接");
   }
 }
+function isDouyinUrl(input: string): boolean {
+  try {
+    const hostname = new URL(input).hostname.toLowerCase();
+    return hostname.includes("douyin.com") || hostname.includes("iesdouyin.com");
+  } catch {
+    return input.includes("v.douyin.com/");
+  }
+}
+function maybeWarnDouyinCookie(input: string) {
+  if (!isDouyinUrl(input)) return;
+
+  const hasCookieFile = Boolean(settingsStore.cookiesFile.trim());
+  const token = [settingsStore.cookieMode, settingsStore.cookieBrowser, hasCookieFile ? "file" : "nofile"].join(":");
+  if (douyinCookieHintToken.value === token) return;
+
+  if (settingsStore.cookieMode === "none") {
+    douyinCookieHintToken.value = token;
+    ElMessage.warning("\u6296\u97f3\u94fe\u63a5\u7ecf\u5e38\u9700\u8981\u65b0\u9c9c Cookie\u3002\u5f53\u524d\u5df2\u5173\u95ed Cookie \u652f\u6301\uff0c\u5efa\u8bae\u524d\u5f80\u8bbe\u7f6e\u542f\u7528\u6d4f\u89c8\u5668 Cookie \u6216\u5bfc\u5165 cookies.txt\u3002", 5000);
+    return;
+  }
+
+  if (settingsStore.cookieMode === "file" && !hasCookieFile) {
+    douyinCookieHintToken.value = token;
+    ElMessage.warning("\u5f53\u524d\u6296\u97f3\u89e3\u6790\u4f9d\u8d56 Cookie\uff0c\u4f46\u8fd8\u6ca1\u6709\u9009\u62e9 cookies.txt\u3002\u5efa\u8bae\u5148\u5230\u8bbe\u7f6e\u4e2d\u5bfc\u5165\u6700\u65b0 cookies.txt\u3002", 5000);
+    return;
+  }
+
+  if (settingsStore.cookieMode === "browser") {
+    douyinCookieHintToken.value = token;
+    ElMessage.info("\u6b63\u5728\u4f7f\u7528 " + settingsStore.cookieBrowser + " \u6d4f\u89c8\u5668 Cookie \u89e3\u6790\u6296\u97f3\u3002\u5982\u4ecd\u5931\u8d25\uff0c\u8bf7\u5148\u5728\u6d4f\u89c8\u5668\u6253\u5f00\u4e00\u6b21\u76ee\u6807\u6296\u97f3\u9875\u9762\u540e\u91cd\u8bd5\u3002", 5000);
+    return;
+  }
+
+  if (settingsStore.cookieMode === "auto") {
+    douyinCookieHintToken.value = token;
+    ElMessage.info("\u6296\u97f3\u90e8\u5206\u94fe\u63a5\u9700\u8981\u65b0\u9c9c Cookie\u3002\u82e5\u672c\u6b21\u89e3\u6790\u5931\u8d25\uff0c\u8bf7\u5230\u8bbe\u7f6e\u4e2d\u6539\u7528\u6d4f\u89c8\u5668 Cookie \u6216\u5bfc\u5165\u6700\u65b0 cookies.txt\u3002", 5000);
+  }
+}
 async function handleParse() {
   const currentUrl = url.value.trim();
   if (!currentUrl) return;
+  maybeWarnDouyinCookie(currentUrl);
   parsing.value = true;
   error.value = "";
   resetSingleVideoState();
@@ -662,6 +702,7 @@ async function downloadSelectedEntry() {
     title: entryVideoInfo.value.title,
     thumbnail: entryVideoInfo.value.thumbnail,
     url: sourceUrl,
+    duration: entryVideoInfo.value.duration,
     formatId: entrySelectedFormat.value,
     formatLabel,
     outputDir: settingsStore.defaultSavePath,
@@ -712,6 +753,7 @@ async function handleDownload() {
     title: videoInfo.value.title,
     thumbnail: videoInfo.value.thumbnail,
     url: sourceUrl,
+    duration: videoInfo.value.duration,
     formatId: selectedFormat.value,
     formatLabel,
     outputDir: settingsStore.defaultSavePath,

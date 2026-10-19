@@ -33,6 +33,10 @@ interface RawVideoInfo {
   id?: unknown
   title?: unknown
   thumbnail?: unknown
+  thumbnail_url?: unknown
+  cover?: unknown
+  poster?: unknown
+  image?: unknown
   thumbnails?: unknown
   duration?: unknown
   uploader?: unknown
@@ -80,14 +84,38 @@ function resolveShortLink(url: string, maxHops = 5): Promise<string> {
   })
 }
 
-// yt-dlp natively handles short-link resolution — do not resolve manually
-const SHORT_LINK_HOSTS: string[] = []
+const SHORT_LINK_HOSTS = [
+  'v.douyin.com',
+  'www.iesdouyin.com',
+  'iesdouyin.com',
+  'v.iesdouyin.com',
+  'vm.tiktok.com',
+  'vt.tiktok.com'
+]
 
 function needsResolve(url: string): boolean {
   try {
-    return SHORT_LINK_HOSTS.includes(new URL(url).hostname)
+    return SHORT_LINK_HOSTS.includes(new URL(url).hostname.toLowerCase())
   } catch {
     return false
+  }
+}
+
+function normalizeSupportedUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const hostname = parsed.hostname.toLowerCase()
+
+    if (hostname.includes('iesdouyin.com')) {
+      const shareVideoMatch = parsed.pathname.match(/\/share\/video\/(\d+)/)
+      if (shareVideoMatch?.[1]) {
+        return `https://www.douyin.com/video/${shareVideoMatch[1]}`
+      }
+    }
+
+    return url
+  } catch {
+    return url
   }
 }
 
@@ -103,6 +131,7 @@ export class YtDlpService {
     if (needsResolve(cleanUrl)) {
       cleanUrl = await resolveShortLink(cleanUrl)
     }
+    cleanUrl = normalizeSupportedUrl(cleanUrl)
     const attempts = buildParseAttempts(cleanUrl, this.settings.get())
     let lastError = ''
 
@@ -118,7 +147,11 @@ export class YtDlpService {
   }
 
   async parsePlaylist(url: string): Promise<PlaylistParseResult> {
-    const cleanUrl = extractUrl(url)
+    let cleanUrl = extractUrl(url)
+    if (needsResolve(cleanUrl)) {
+      cleanUrl = await resolveShortLink(cleanUrl)
+    }
+    cleanUrl = normalizeSupportedUrl(cleanUrl)
     const common = buildCommonArgsForUrl(cleanUrl, this.settings.get())
     const isBili = isBilibiliHost(cleanUrl)
 
@@ -134,12 +167,12 @@ export class YtDlpService {
       let stdout = ''
       let stderr = ''
 
-      proc.stdout.on('data', (data: Buffer) => { stdout += data.toString() })
-      proc.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
+      proc.stdout!.on('data', (data: Buffer) => { stdout += data.toString() })
+      proc.stderr!.on('data', (data: Buffer) => { stderr += data.toString() })
 
       const timer = setTimeout(() => {
         proc.kill()
-        reject(new Error('解析播放列表超时'))
+        reject(new Error('瑙ｆ瀽鎾斁鍒楄〃瓒呮椂'))
       }, timeoutMs)
 
       proc.on('close', (code) => {
@@ -149,16 +182,16 @@ export class YtDlpService {
             const raw = JSON.parse(stdout)
             resolve(this.transformPlaylist(raw, cleanUrl))
           } catch (err) {
-            reject(new Error('解析播放列表数据失败'))
+            reject(new Error('瑙ｆ瀽鎾斁鍒楄〃鏁版嵁澶辫触'))
           }
         } else {
-          reject(new Error(stderr || '解析播放列表失败'))
+          reject(new Error(stderr || '瑙ｆ瀽鎾斁鍒楄〃澶辫触'))
         }
       })
 
       proc.on('error', (err) => {
         clearTimeout(timer)
-        reject(new Error(`启动 yt-dlp 失败: ${err.message}`))
+        reject(new Error(`鍚姩 yt-dlp 澶辫触: ${err.message}`))
       })
     })
   }
@@ -173,7 +206,7 @@ export class YtDlpService {
       if (!id) continue
       entries.push({
         id,
-        title: stringValue(entry.title) || stringValue(entry.fulltitle) || '未知标题',
+        title: stringValue(entry.title) || stringValue(entry.fulltitle) || '鏈煡鏍囬',
         url: stringValue(entry.webpage_url) || stringValue(entry.url) || `${sourceUrl}&v=${id}`,
         duration: numberValue(entry.duration),
         thumbnail: pickThumbnail(entry),
@@ -184,7 +217,7 @@ export class YtDlpService {
 
     return {
       id: stringValue(raw.id),
-      title: stringValue(raw.title) || stringValue(raw.playlist_title) || '播放列表',
+      title: stringValue(raw.title) || stringValue(raw.playlist_title) || '鎾斁鍒楄〃',
       uploader: stringValue(raw.uploader) || stringValue(raw.channel) || '',
       entryCount: entries.length,
       entries
@@ -196,7 +229,7 @@ export class YtDlpService {
       const proc = spawnSafe(this.binaryPath, ['--version'])
       let stdout = ''
 
-      proc.stdout.on('data', (data: Buffer) => { stdout += data.toString() })
+      proc.stdout!.on('data', (data: Buffer) => { stdout += data.toString() })
       proc.on('close', (code) => {
         if (code === 0) resolve(stdout.trim())
         else reject(new Error(`yt-dlp exited with code ${code}`))
@@ -211,12 +244,12 @@ export class YtDlpService {
       let stdout = ''
       let stderr = ''
 
-      proc.stdout.on('data', (data: Buffer) => { stdout += data.toString() })
-      proc.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
+      proc.stdout!.on('data', (data: Buffer) => { stdout += data.toString() })
+      proc.stderr!.on('data', (data: Buffer) => { stderr += data.toString() })
 
       const timer = setTimeout(() => {
         proc.kill()
-        reject(new Error('解析超时'))
+        reject(new Error('瑙ｆ瀽瓒呮椂'))
       }, 30000)
 
       proc.on('close', (code) => {
@@ -230,7 +263,7 @@ export class YtDlpService {
             }
             resolve(result)
           } catch (error) {
-            reject(error instanceof Error ? error : new Error('解析返回数据失败'))
+            reject(error instanceof Error ? error : new Error('瑙ｆ瀽杩斿洖鏁版嵁澶辫触'))
           }
         } else {
           reject(new Error(stderr))
@@ -239,7 +272,7 @@ export class YtDlpService {
 
       proc.on('error', (err) => {
         clearTimeout(timer)
-        reject(new Error(`启动 yt-dlp 失败: ${err.message}`))
+        reject(new Error(`鍚姩 yt-dlp 澶辫触: ${err.message}`))
       })
     })
   }
@@ -248,10 +281,10 @@ export class YtDlpService {
     const raw = toRawVideoInfo(rawValue)
     return {
       id: stringValue(raw.id),
-      title: stringValue(raw.title) || '未知标题',
+      title: stringValue(raw.title) || '鏈煡鏍囬',
       thumbnail: this.normalizeThumbnail(raw),
       duration: numberValue(raw.duration),
-      uploader: stringValue(raw.uploader) || stringValue(raw.channel) || '未知',
+      uploader: stringValue(raw.uploader) || stringValue(raw.channel) || '鏈煡',
       uploaderUrl: stringValue(raw.uploader_url),
       description: stringValue(raw.description),
       webpageUrl: stringValue(raw.webpage_url),
@@ -271,8 +304,8 @@ export class YtDlpService {
     ].filter(Boolean)
 
     const url = candidates
-      .map((item: string) => String(item).trim())
-      .find((item: string) => item && !item.startsWith('data:'))
+      .map(item => String(item).trim())
+      .find(item => item && !item.startsWith('data:'))
 
     if (!url) return ''
     if (url.startsWith('//')) return `https:${url}`
@@ -352,41 +385,49 @@ export class YtDlpService {
   }
 
   private parseError(stderr: string): string {
-    if (stderr.includes('Could not copy Chrome cookie database')) {
-      return '解析失败：无法读取浏览器 Cookie，请关闭浏览器或改用 cookies.txt'
+    const normalized = stderr.toLowerCase()
+
+    if (normalized.includes('could not copy chrome cookie database')) {
+      return '无法读取浏览器 Cookie，请关闭占用浏览器后重试，或改用 cookies.txt。'
     }
-    if (stderr.includes('Please sign in') || stderr.includes('Sign in') || stderr.includes('login')) {
-      return '解析失败：YouTube 要求登录。请使用 cookies.txt，或确认该视频在未登录窗口中也能播放'
+    if (normalized.includes('please sign in') || normalized.includes('sign in') || normalized.includes('login')) {
+      return '当前资源需要登录后才能访问，请补充有效 Cookie 或导入 cookies.txt。'
     }
-    if (stderr.includes('Only images are available') || stderr.includes('No downloadable formats')) {
-      return '解析失败：该页面未检测到可下载的视频格式，可能是列表/合集页，或需要提供 Cookie'
+    if (normalized.includes('only images are available') || normalized.includes('no downloadable formats')) {
+      return '当前链接没有可下载的视频格式，可能只有图片、预览流，或需要登录后才能获取完整格式。'
     }
-    if (stderr.includes('n challenge solving failed') || stderr.includes('No supported JavaScript runtime')) {
-      return '解析失败：YouTube 挑战解析失败。建议安装 Deno 或 Node 22+，并在后续设置里指定 JS Runtime'
+    if (normalized.includes('n challenge solving failed') || normalized.includes('no supported javascript runtime')) {
+      return '当前站点需要 JavaScript 运行环境辅助解析，请确认 Deno 或 Node 22+ 可用。'
     }
-    if (stderr.includes('PO Token')) {
-      return '解析失败：YouTube 当前需要 PO Token 或登录 Cookie，建议使用 cookies.txt'
+    if (normalized.includes('po token')) {
+      return '当前资源需要更完整的身份凭证，建议补充最新 Cookie 或导入 cookies.txt。'
     }
-    if (stderr.includes('DRM protected')) return '解析失败：该视频受 DRM 保护，无法下载'
-    if (stderr.includes('Unsupported URL')) return '不支持的链接'
-    if (stderr.includes('Private video')) return '私密视频，无法访问'
-    if (stderr.includes('HTTP Error 403') || stderr.includes('Forbidden')) {
-      return '解析失败：访问被拒绝，请检查 Cookie 或代理'
+    if (normalized.includes('drm protected')) return '该资源受到 DRM 保护，当前无法直接下载。'
+    if (normalized.includes('unsupported url')) return '当前链接暂不支持，请尝试分享页原链接或完整视频页链接。'
+    if (normalized.includes('private video')) return '该视频为私密资源，当前无法访问。'
+    if (normalized.includes('http error 403') || normalized.includes('forbidden')) {
+      return '请求被目标站点拒绝，通常需要新的 Cookie、代理，或稍后重试。'
     }
-    if (stderr.includes('Video unavailable') || stderr.includes('This video is not available')) {
-      return '视频不可用，或当前网络/Cookie 状态无法访问'
+    if (normalized.includes('video unavailable') || normalized.includes('this video is not available')) {
+      return '该视频暂时不可用，可能已下架、地区受限，或需要登录后访问。'
     }
-    if (stderr.includes('抖音') || stderr.includes('douyin') || stderr.includes('aweme')) {
-      if (stderr.includes('blocked') || stderr.includes('captcha') || stderr.includes('verify') || stderr.includes('challenge')) {
-        return '抖音访问受限（风控/验证码拦截），可尝试在设置中配置代理，或提供 cookies.txt'
+    if (normalized.includes('douyin') || normalized.includes('aweme') || normalized.includes('iesdouyin')) {
+      if (normalized.includes('fresh cookies')) {
+        return '抖音当前要求新鲜 Cookie。请在设置里选择浏览器 Cookie，或导入刚导出的 cookies.txt 后重试。'
       }
-      if (stderr.includes('private') || stderr.includes('deleted') || stderr.includes('removed')) {
-        return '该抖音视频为私密或已被删除'
+      if (normalized.includes('failed to parse json')) {
+        return '抖音返回了异常数据，通常是未带上有效 Cookie 或触发了风控。请补充新鲜 Cookie 后再试。'
       }
-      if (stderr.includes('not found') || stderr.includes('404') || stderr.includes('does not exist')) {
-        return '抖音视频不存在或链接已失效'
+      if (normalized.includes('blocked') || normalized.includes('captcha') || normalized.includes('verify') || normalized.includes('challenge')) {
+        return '抖音触发了风控校验，请稍后再试，或补充浏览器 Cookie / cookies.txt。'
       }
-      return '抖音解析失败：可能是风控限制。可尝试使用代理，或将抖音 cookies.txt 放入 userData 目录'
+      if (normalized.includes('private') || normalized.includes('deleted') || normalized.includes('removed')) {
+        return '该抖音资源已被删除、设为私密，或当前账号无权访问。'
+      }
+      if (normalized.includes('not found') || normalized.includes('404') || normalized.includes('does not exist')) {
+        return '抖音链接不存在，或短链展开后未找到有效视频页面。'
+      }
+      return '抖音链接解析失败，建议使用完整分享链接，并补充浏览器 Cookie 或 cookies.txt。'
     }
     return stderr.slice(0, 200) || '解析失败'
   }
@@ -400,7 +441,6 @@ export class YtDlpService {
     return `${size.toFixed(2)} ${units[i]}`
   }
 }
-
 function isBilibiliHost(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.toLowerCase()

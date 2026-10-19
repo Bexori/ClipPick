@@ -1,5 +1,6 @@
 appId: com.videobox.app
 productName: ClipPick
+artifactName: ${productName} Setup ${version}.${ext}
 directories:
   output: dist-electron
 files:
@@ -12,17 +13,22 @@ extraResources:
       - "**/icon.ico"
       - "**/*.exe"
 win:
+  executableName: ClipPick
   icon: build/icon.ico
+  signAndEditExecutable: false
   target:
     - target: nsis
       arch:
         - x64
 nsis:
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
   oneClick: false
+  perMachine: false
+  allowElevation: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   shortcutName: ClipPick
+  uninstallDisplayName: ClipPick
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
 asarUnpack:
   - "resources/**"

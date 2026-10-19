@@ -421,6 +421,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle(IpcChannels.HISTORY_LIST, () => history.getAll())
   ipcMain.handle(IpcChannels.HISTORY_ADD, (_event, entry: HistoryEntry) => history.add(entry))
+  ipcMain.handle(IpcChannels.HISTORY_RENAME, (_event, { id, name }: { id: string; name: string }) => history.rename(id, name))
   ipcMain.handle(IpcChannels.HISTORY_DELETE, (_event, { id }: { id: string }) => history.delete(id))
   ipcMain.handle(IpcChannels.HISTORY_CLEAR, () => history.clear())
 
@@ -513,7 +514,18 @@ export function registerIpcHandlers(
 
   ipcMain.handle(IpcChannels.APP_GET_VERSION, () => app.getVersion())
   ipcMain.handle(IpcChannels.APP_OPEN_EXTERNAL, (_event, { url }: { url: string }) => {
-    shell.openExternal(url)
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      throw new Error('无效的外部链接')
+    }
+
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('仅允许打开 HTTP 或 HTTPS 链接')
+    }
+
+    return shell.openExternal(parsed.href)
   })
 
   ipcMain.handle(IpcChannels.VERSION_CHECK, async (): Promise<VersionCheckResult> => {

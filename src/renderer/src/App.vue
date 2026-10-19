@@ -15,6 +15,10 @@
             <el-icon :size="18"><Star /></el-icon>
             <span>收藏</span>
           </router-link>
+          <router-link to="/audio-extract" class="nav-item" :class="{ active: activeMenu === '/audio-extract' }" title="提取音频">
+            <el-icon :size="18"><Headset /></el-icon>
+            <span>提取音频</span>
+          </router-link>
         </nav>
 
         <div class="sidebar-footer">
@@ -66,7 +70,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeftBold, ArrowRightBold, Clock, Download, Setting, Star } from '@element-plus/icons-vue'
+import { ArrowLeftBold, ArrowRightBold, Clock, Download, Headset, Setting, Star } from '@element-plus/icons-vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
 import ja from 'element-plus/es/locale/lang/ja'

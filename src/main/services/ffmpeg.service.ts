@@ -67,7 +67,7 @@ export class FfmpegService {
       this.tasks.set(taskId, { proc, outputPath, cleanup: () => { inputSafe.cleanup(); outputSafe.cleanup() } })
 
       let stderrAll = ''
-      proc.stderr.on('data', (data: Buffer) => {
+      proc.stderr!.on('data', (data: Buffer) => {
         stderrAll += data.toString()
         const lines = data.toString().split('\n')
         for (const line of lines) {
@@ -134,7 +134,7 @@ export class FfmpegService {
       this.tasks.set(taskId, { proc, outputPath, cleanup: () => { inputSafe.cleanup(); outputSafe.cleanup() } })
 
       let stderrAll = ''
-      proc.stderr.on('data', (data: Buffer) => {
+      proc.stderr!.on('data', (data: Buffer) => {
         stderrAll += data.toString()
         const lines = data.toString().split('\n')
         for (const line of lines) {
@@ -180,7 +180,7 @@ export class FfmpegService {
         resolve(0)
       }, 10000)
 
-      proc.stderr.on('data', (d: Buffer) => { stderr += d.toString() })
+      proc.stderr!.on('data', (d: Buffer) => { stderr += d.toString() })
       proc.on('close', () => {
         clearTimeout(timer)
         const match = stderr.match(/Duration: (\d+):(\d+):(\d+)\.(\d+)/)
@@ -190,6 +190,19 @@ export class FfmpegService {
           resolve(0)
         }
       })
+    })
+  }
+
+  async getVersion(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const proc = spawnSafe(this.binaryPath, ['-version'])
+      let stdout = ''
+      proc.stdout!.on('data', (data: Buffer) => { stdout += data.toString() })
+      proc.on('close', (code) => {
+        if (code === 0) resolve(stdout.split(/\r?\n/, 1)[0].trim() || 'unknown')
+        else reject(new Error(`ffmpeg exited with code ${code}`))
+      })
+      proc.on('error', reject)
     })
   }
 }

@@ -1,12 +1,5 @@
 <template>
   <div class="list-page">
-    <div class="list-page__header">
-      <div class="list-page__title-wrap">
-        <h2 class="list-page__title">下载历史</h2>
-        <p class="list-page__desc">查看已完成的下载记录，并执行打开位置、后处理或清理操作。</p>
-      </div>
-    </div>
-
     <div class="list-page__toolbar">
       <div class="list-page__summary">
         <span class="list-page__count">{{ historyStore.entries.length }}</span>
@@ -36,6 +29,7 @@
       :loading="historyStore.loading"
       @open-location="handleOpenLocation"
       @process="handleFileProcess"
+      @rename="handleRename"
       @delete="handleDelete"
     />
 
@@ -181,6 +175,32 @@ async function handleDelete(row: HistoryEntry) {
   ElMessage.success('文件和记录已删除')
 }
 
+async function handleRename(row: HistoryEntry) {
+  if (!row.filepath) {
+    ElMessage.warning('文件路径不存在，无法重命名')
+    return
+  }
+
+  const filename = row.filepath.split(/[\\/]/).pop() || ''
+  const dotIndex = filename.lastIndexOf('.')
+  const defaultName = dotIndex > 0 ? filename.slice(0, dotIndex) : filename
+
+  try {
+    const { value } = await ElMessageBox.prompt('只填写文件名，不需要填写路径。原文件扩展名会自动保留。', '重命名文件', {
+      inputValue: defaultName,
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：我的视频',
+      inputValidator: (value: string) => value.trim() ? true : '文件名不能为空'
+    })
+    await historyStore.renameEntry(row.id, value)
+    ElMessage.success('文件已重命名')
+  } catch (err) {
+    if (err === 'cancel' || err === 'close') return
+    ElMessage.error(err instanceof Error ? err.message : '文件重命名失败')
+  }
+}
+
 function adjustPageAfterDelete() {
   const totalAfter = historyStore.entries.length
   const maxPage = Math.max(1, Math.ceil(totalAfter / pageSize.value))
@@ -217,35 +237,6 @@ async function handleClear() {
   gap: 12px;
   overflow: hidden;
   box-sizing: border-box;
-}
-
-.list-page__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.list-page__title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.list-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--vb-text);
-}
-
-.list-page__desc {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--vb-text-secondary);
 }
 
 .list-page__toolbar {

@@ -131,13 +131,14 @@ export const useDownloadStore = defineStore('download', () => {
     if (task) {
       historyStore.addEntry({
         id: data.taskId,
+        url: task.url,
         videoId: task.videoId,
         title: task.title,
         thumbnail: task.thumbnail,
+        duration: task.duration,
         formatLabel: task.formatLabel,
         filepath: data.filepath,
         filesize: data.filesize,
-        duration: 0,
         status: 'completed',
         downloadedAt: new Date().toISOString(),
         subtitleFiles: data.subtitleFiles ?? [],

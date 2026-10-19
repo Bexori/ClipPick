@@ -39,6 +39,13 @@ export const useHistoryStore = defineStore('history', () => {
     }
   }
 
+  async function renameEntry(id: string, name: string) {
+    const updated = await window.api.renameHistory(id, name)
+    const index = entries.value.findIndex(entry => entry.id === id)
+    if (index !== -1) entries.value[index] = updated
+    return updated
+  }
+
   async function clearHistory() {
     try {
       await window.api.clearHistory()
@@ -48,5 +55,5 @@ export const useHistoryStore = defineStore('history', () => {
     }
   }
 
-  return { entries, loading, loadHistory, addEntry, deleteEntry, clearHistory }
+  return { entries, loading, loadHistory, addEntry, renameEntry, deleteEntry, clearHistory }
 })

@@ -13,6 +13,10 @@
           <el-icon :size="14"><Switch /></el-icon>
           <span>后期处理</span>
         </el-dropdown-item>
+        <el-dropdown-item @click="$emit('rename', row)">
+          <el-icon :size="14"><Edit /></el-icon>
+          <span>重命名文件</span>
+        </el-dropdown-item>
         <el-dropdown-item divided @click="$emit('delete', row)">
           <el-icon :size="14"><Delete /></el-icon>
           <span class="danger-text">删除</span>
@@ -23,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { Delete, FolderOpened, MoreFilled, Switch } from '@element-plus/icons-vue'
+import { Delete, Edit, FolderOpened, MoreFilled, Switch } from '@element-plus/icons-vue'
 import type { HistoryEntry } from '../../../shared/types'
 
 defineProps<{
@@ -33,6 +37,7 @@ defineProps<{
 defineEmits<{
   openLocation: [row: HistoryEntry]
   process: [row: HistoryEntry]
+  rename: [row: HistoryEntry]
   delete: [row: HistoryEntry]
 }>()
 </script>

@@ -1,12 +1,5 @@
 <template>
   <div class="list-page">
-    <div class="list-page__header">
-      <div class="list-page__title-wrap">
-        <h2 class="list-page__title">收藏</h2>
-        <p class="list-page__desc">保存常用链接，后续可以快速回到首页重新解析、复制或移除收藏。</p>
-      </div>
-    </div>
-
     <div class="list-page__toolbar">
       <div class="list-page__summary">
         <span class="list-page__count">{{ savedUrlsStore.entries.length }}</span>
@@ -35,6 +28,8 @@
         :data="pagedEntries"
         v-loading="savedUrlsStore.loading"
         stripe
+        height="100%"
+        :fit="false"
         :show-header="true"
         empty-text="暂无已保存的链接"
         row-key="id"
@@ -187,35 +182,6 @@ function formatDate(iso: string): string {
   box-sizing: border-box;
 }
 
-.list-page__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.list-page__title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.list-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--vb-text);
-}
-
-.list-page__desc {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--vb-text-secondary);
-}
-
 .list-page__toolbar {
   display: flex;
   align-items: center;
@@ -285,13 +251,49 @@ function formatDate(iso: string): string {
 }
 
 .saved-table-wrap {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  height: 0;
+  overflow: hidden;
   scrollbar-gutter: stable;
   background: transparent;
   border: 0;
   border-radius: 0;
+}
+
+:deep(.saved-table-wrap .el-table) {
+  width: 100%;
+}
+
+:deep(.saved-table-wrap .el-table__header table),
+:deep(.saved-table-wrap .el-table__body table),
+:deep(.saved-table-wrap .el-table__footer table) {
+  min-width: 892px !important;
+}
+
+:deep(.saved-table-wrap .el-table__body-wrapper::-webkit-scrollbar),
+:deep(.saved-table-wrap .el-table__header-wrapper::-webkit-scrollbar),
+:deep(.saved-table-wrap .el-table__footer-wrapper::-webkit-scrollbar) {
+  height: 5px;
+}
+
+:deep(.saved-table-wrap .el-table__body-wrapper::-webkit-scrollbar-track),
+:deep(.saved-table-wrap .el-table__header-wrapper::-webkit-scrollbar-track),
+:deep(.saved-table-wrap .el-table__footer-wrapper::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+:deep(.saved-table-wrap .el-table__body-wrapper::-webkit-scrollbar-thumb),
+:deep(.saved-table-wrap .el-table__header-wrapper::-webkit-scrollbar-thumb),
+:deep(.saved-table-wrap .el-table__footer-wrapper::-webkit-scrollbar-thumb) {
+  background: #c9cdd4;
+  border-radius: 999px;
+}
+
+:deep(.saved-table-wrap .el-table__body-wrapper::-webkit-scrollbar-thumb:hover),
+:deep(.saved-table-wrap .el-table__header-wrapper::-webkit-scrollbar-thumb:hover),
+:deep(.saved-table-wrap .el-table__footer-wrapper::-webkit-scrollbar-thumb:hover) {
+  background: #aeb4bf;
 }
 
 .thumb-img {
@@ -336,4 +338,5 @@ function formatDate(iso: string): string {
     justify-content: flex-start;
   }
 }
+
 </style>
