@@ -21,7 +21,6 @@ export const IpcChannels = {
 
   // FFmpeg
   FFMPEG_CONVERT: 'ffmpeg:convert',
-  FFMPEG_EXTRACT_AUDIO: 'ffmpeg:extract-audio',
   FFMPEG_PROGRESS: 'ffmpeg:progress',
   FFMPEG_COMPLETE: 'ffmpeg:complete',
   FFMPEG_ERROR: 'ffmpeg:error',
@@ -62,6 +61,7 @@ export const IpcChannels = {
 
   // Version check
   VERSION_CHECK: 'app:version-check',
+  RESOURCE_UPDATE: 'app:resource-update',
 
   // Download recovery
   DOWNLOAD_RECOVER: 'download:recover',
@@ -321,6 +321,11 @@ export interface FfmpegTask {
 export interface VersionCheckResult {
   ytDlp: { current: string; latest: string; outdated: boolean }
   ffmpeg: { current: string; latest: string; outdated: boolean }
+}
+
+export interface ResourceUpdateResult {
+  resource: 'yt-dlp' | 'ffmpeg'
+  version: string
 }
 
 // ============ 翻译 ============

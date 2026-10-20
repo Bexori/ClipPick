@@ -12,3 +12,4 @@ resources/deno.exe
 downloads/*
 !downloads/.gitkeep
 .claude/
+docs/

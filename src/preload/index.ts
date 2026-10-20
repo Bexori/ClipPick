@@ -53,13 +53,6 @@ const api = {
     outputFormat: string
     outputFilename?: string
   }): Promise<string> => invokeSafe('ffmpeg:convert', req, '视频转换失败'),
-  extractAudio: (req: {
-    inputPath: string
-    outputDir?: string
-    outputFormat: string
-    outputFilename?: string
-  }): Promise<string> => invokeSafe('ffmpeg:extract-audio', req, '音频提取失败'),
-
   getHistory: (): Promise<HistoryEntry[]> =>
     invokeSafe('history:list', undefined, '读取历史失败'),
   addHistory: (entry: HistoryEntry): Promise<void> =>
@@ -111,6 +104,8 @@ const api = {
     invokeSafe('app:open-external', { url }, '打开链接失败'),
   checkVersions: (): Promise<import('../shared/types').VersionCheckResult> =>
     invokeSafe('app:version-check', undefined, '检查版本失败'),
+  updateResource: (resource: 'yt-dlp' | 'ffmpeg'): Promise<import('../shared/types').ResourceUpdateResult> =>
+    invokeSafe('app:resource-update', resource, '更新资源失败'),
 
   onDownloadProgress: (cb: (data: ProgressPayload) => void): (() => void) => {
     const handler = (_event: IpcRendererEvent, data: ProgressPayload) => cb(data)

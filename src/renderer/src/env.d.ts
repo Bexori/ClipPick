@@ -20,7 +20,6 @@ interface VideoBoxApi {
   deleteFile(filepath: string): Promise<import('../../shared/types').FileOpResult>
   showItemInFolder(filepath: string): Promise<import('../../shared/types').FileOpResult>
   convertVideo(req: { inputPath: string; outputDir?: string; outputFormat: string; outputFilename?: string }): Promise<string>
-  extractAudio(req: { inputPath: string; outputDir?: string; outputFormat: string; outputFilename?: string }): Promise<string>
   getHistory(): Promise<import('../../shared/types').HistoryEntry[]>
   addHistory(entry: import('../../shared/types').HistoryEntry): Promise<void>
   renameHistory(id: string, name: string): Promise<import('../../shared/types').HistoryEntry>
@@ -44,6 +43,7 @@ interface VideoBoxApi {
   getAppVersion(): Promise<string>
   openExternal(url: string): Promise<void>
   checkVersions(): Promise<import('../../shared/types').VersionCheckResult>
+  updateResource(resource: 'yt-dlp' | 'ffmpeg'): Promise<import('../../shared/types').ResourceUpdateResult>
   onDownloadProgress(cb: (data: import('../../shared/types').ProgressPayload) => void): () => void
   onDownloadComplete(cb: (data: import('../../shared/types').CompletePayload) => void): () => void
   onDownloadError(cb: (data: import('../../shared/types').ErrorPayload) => void): () => void

@@ -119,6 +119,22 @@ function normalizeSupportedUrl(url: string): string {
   }
 }
 
+function cleanYtDlpDiagnostic(stderr: string): string {
+  const ignoredPrefixes = [
+    'warning: your yt-dlp version',
+    'it is strongly recommended',
+    'run "yt-dlp --update"',
+    'to suppress this warning'
+  ]
+
+  return stderr
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => !ignoredPrefixes.some(prefix => line.toLowerCase().startsWith(prefix)))
+    .join('\n')
+}
+
 export class YtDlpService {
   private binaryPath: string
 
@@ -185,7 +201,7 @@ export class YtDlpService {
             reject(new Error('瑙ｆ瀽鎾斁鍒楄〃鏁版嵁澶辫触'))
           }
         } else {
-          reject(new Error(stderr || '瑙ｆ瀽鎾斁鍒楄〃澶辫触'))
+          reject(new Error(cleanYtDlpDiagnostic(stderr) || '瑙ｆ瀽鎾斁鍒楄〃澶辫触'))
         }
       })
 
@@ -258,7 +274,8 @@ export class YtDlpService {
           try {
             const result = this.transformVideoInfo(JSON.parse(stdout) as unknown)
             if (result.formats.length === 0) {
-              reject(new Error(`${stderr}\nNo downloadable formats after filtering.`))
+              const diagnostic = cleanYtDlpDiagnostic(stderr)
+              reject(new Error(`${diagnostic ? `${diagnostic}\n` : ''}No downloadable formats after filtering.`))
               return
             }
             resolve(result)
@@ -266,7 +283,7 @@ export class YtDlpService {
             reject(error instanceof Error ? error : new Error('瑙ｆ瀽杩斿洖鏁版嵁澶辫触'))
           }
         } else {
-          reject(new Error(stderr))
+          reject(new Error(cleanYtDlpDiagnostic(stderr) || '瑙ｆ瀽澶辫触'))
         }
       })
 
@@ -385,7 +402,8 @@ export class YtDlpService {
   }
 
   private parseError(stderr: string): string {
-    const normalized = stderr.toLowerCase()
+    const diagnostic = cleanYtDlpDiagnostic(stderr)
+    const normalized = diagnostic.toLowerCase()
 
     if (normalized.includes('could not copy chrome cookie database')) {
       return '无法读取浏览器 Cookie，请关闭占用浏览器后重试，或改用 cookies.txt。'
@@ -429,7 +447,7 @@ export class YtDlpService {
       }
       return '抖音链接解析失败，建议使用完整分享链接，并补充浏览器 Cookie 或 cookies.txt。'
     }
-    return stderr.slice(0, 200) || '解析失败'
+    return diagnostic.slice(0, 200) || '解析失败'
   }
 
   private formatBytes(bytes: number): string {

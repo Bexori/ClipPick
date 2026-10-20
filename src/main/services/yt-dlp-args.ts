@@ -104,6 +104,16 @@ function getDenoPath(): string | null {
 
 const URL_PATTERN = /https?:\/\/[^\s"'<>]+/i
 
+/** Whether the input is a direct HLS playlist URL rather than a normal page URL. */
+export function isDirectM3u8Url(url: string): boolean {
+  try {
+    const parsed = new URL(extractUrl(url))
+    return /\.m3u8(?:$|[?#])/i.test(parsed.pathname + parsed.search)
+  } catch {
+    return /\.m3u8(?:$|[?#])/i.test(url)
+  }
+}
+
 function trimExtractedUrl(url: string): string {
   return url.replace(/[^A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$/g, '')
 }
@@ -122,6 +132,17 @@ export function buildParseAttempts(url: string, settings: AppSettings = defaultS
   const cleanUrl = extractUrl(url)
   const attempts = buildAttempts(cleanUrl, settings)
   const site = detectSite(cleanUrl)
+
+  if (isDirectM3u8Url(cleanUrl)) {
+    const common = buildCommonArgs(cleanUrl, settings)
+    attempts.unshift({
+      label: 'direct:m3u8',
+      args: [
+        ...common,
+        '--hls-prefer-ffmpeg'
+      ]
+    })
+  }
 
   if (site === 'youtube') {
     const common = buildCommonArgs(cleanUrl, settings)
@@ -262,6 +283,7 @@ export function buildDownloadArgs(
   settings: AppSettings = defaultSettings,
   subs?: SubtitleOptions
 ): string[] {
+  const directM3u8 = isDirectM3u8Url(url)
   const args = [
     '--no-check-certificates',
     '--geo-bypass',
@@ -272,6 +294,7 @@ export function buildDownloadArgs(
     ...(SITE_STRATEGIES[detectSite(url)].headers ?? []).flatMap(header => ['--add-header', header]),
     ...(SITE_STRATEGIES[detectSite(url)].extractorArgs?.(settings) ?? []).flatMap(arg => ['--extractor-args', arg]),
     ...(settings.proxy.trim() ? ['--proxy', settings.proxy.trim()] : []),
+    ...(directM3u8 ? ['--hls-prefer-ffmpeg', '--concurrent-fragments', '4'] : []),
     url,
     '-f', formatId || 'bestvideo+bestaudio/best',
     '-o', outputTemplate,

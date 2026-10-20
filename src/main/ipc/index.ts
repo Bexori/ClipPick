@@ -10,6 +10,7 @@ import type {
   TranslateRequest,
   TranslateResult,
   VersionCheckResult,
+  ResourceUpdateResult,
   ProxyTestResult,
   TranslateTestRequest,
   TranslateTestResult,
@@ -22,6 +23,7 @@ import { HistoryService } from '../services/history.service'
 import { SettingsService } from '../services/settings.service'
 import { BilibiliAuthService } from '../services/bilibili-auth.service'
 import { SavedUrlsService } from '../services/saved-urls.service'
+import { ResourceUpdateService } from '../services/resource-update.service'
 import { errorMessage, logger } from '../utils/logger'
 
 interface GithubRelease {
@@ -297,6 +299,8 @@ export function registerIpcHandlers(
   bilibili: BilibiliAuthService,
   savedUrls: SavedUrlsService
 ): void {
+  const resourceUpdater = new ResourceUpdateService()
+
   ipcMain.handle(IpcChannels.YTDLP_PARSE_URL, async (_event, { url }: { url: string }) => {
     return ytDlp.parseVideo(url)
   })
@@ -363,15 +367,6 @@ export function registerIpcHandlers(
 
   ipcMain.handle(IpcChannels.FFMPEG_CONVERT, async (_event, req: { inputPath: string; outputDir?: string; outputFormat: string; outputFilename?: string }) => {
     return ffmpeg.convertVideo(
-      req,
-      data => win.webContents.send('ffmpeg:progress', data),
-      data => win.webContents.send('ffmpeg:complete', data),
-      data => win.webContents.send('ffmpeg:error', data)
-    )
-  })
-
-  ipcMain.handle(IpcChannels.FFMPEG_EXTRACT_AUDIO, async (_event, req: { inputPath: string; outputDir?: string; outputFormat: string; outputFilename?: string }) => {
-    return ffmpeg.extractAudio(
       req,
       data => win.webContents.send('ffmpeg:progress', data),
       data => win.webContents.send('ffmpeg:complete', data),
@@ -561,6 +556,13 @@ export function registerIpcHandlers(
       // offline or rate-limited
     }
 
+    // BtbN publishes its rolling Windows build under the literal `latest`
+    // tag, so comparing a concrete FFmpeg build string with that tag would
+    // incorrectly report an update forever after a successful replacement.
+    const ffmpegOutdated = ffmpegLatest !== 'latest' &&
+      ffmpegVer !== ffmpegLatest &&
+      ffmpegVer !== 'unknown'
+
     return {
       ytDlp: {
         current: ytDlpVer,
@@ -570,8 +572,21 @@ export function registerIpcHandlers(
       ffmpeg: {
         current: ffmpegVer,
         latest: ffmpegLatest,
-        outdated: ffmpegVer !== ffmpegLatest && ffmpegVer !== 'unknown'
+        outdated: ffmpegOutdated
       }
+    }
+  })
+
+  ipcMain.handle(IpcChannels.RESOURCE_UPDATE, async (_event, resource: 'yt-dlp' | 'ffmpeg'): Promise<ResourceUpdateResult> => {
+    if (resource !== 'yt-dlp' && resource !== 'ffmpeg') throw new Error('不支持的资源类型')
+    try {
+      return await resourceUpdater.update(resource)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (/EPERM|EACCES|access is denied|permission denied/i.test(message)) {
+        throw new Error('资源文件正在使用或当前目录不可写，请暂停下载后重试；必要时以管理员权限运行应用')
+      }
+      throw error
     }
   })
 

@@ -222,6 +222,55 @@
             </div>
           </template>
 
+          <template v-else-if="section.key === 'resources'">
+            <div class="setting-row resource-setting-row">
+              <div class="setting-control stacked-control resource-control">
+                <div class="resource-list">
+                  <div class="resource-item">
+                    <div>
+                      <strong class="resource-title"><i class="resource-dot resource-dot--purple" />yt-dlp</strong>
+                      <span class="resource-meta">
+                        {{ resourceVersions?.ytDlp.outdated
+                          ? `当前版本 ${formatResourceVersion(resourceVersions.ytDlp.current, 'yt-dlp')} → 最新版本 ${formatResourceVersion(resourceVersions.ytDlp.latest, 'yt-dlp')}`
+                          : `版本 ${formatResourceVersion(resourceVersions?.ytDlp.current, 'yt-dlp')}` }}
+                      </span>
+                    </div>
+                    <div class="resource-actions">
+                      <el-tag v-if="resourceVersions" size="small" effect="plain" :type="resourceVersions.ytDlp.outdated ? 'warning' : 'success'">
+                        {{ resourceVersions.ytDlp.outdated ? '有新版本' : '已是最新' }}
+                      </el-tag>
+                      <el-button class="resource-update-button" v-if="resourceVersions?.ytDlp.outdated" size="small" type="primary" plain :loading="resourceUpdating === 'yt-dlp'" @click="updateResource('yt-dlp')">
+                        立即更新
+                      </el-button>
+                    </div>
+                  </div>
+                  <div class="resource-item">
+                    <div>
+                      <strong class="resource-title"><i class="resource-dot resource-dot--orange" />FFmpeg</strong>
+                      <span class="resource-meta">
+                        {{ resourceVersions?.ffmpeg.outdated
+                          ? `当前版本 ${formatResourceVersion(resourceVersions.ffmpeg.current, 'ffmpeg')} → 最新版本 ${formatResourceVersion(resourceVersions.ffmpeg.latest, 'ffmpeg')}`
+                          : `版本 ${formatResourceVersion(resourceVersions?.ffmpeg.current, 'ffmpeg')}` }}
+                      </span>
+                    </div>
+                    <div class="resource-actions">
+                      <el-tag v-if="resourceVersions" size="small" effect="plain" :type="resourceVersions.ffmpeg.outdated ? 'warning' : 'success'">
+                        {{ resourceVersions.ffmpeg.outdated ? '有新版本' : '已是最新' }}
+                      </el-tag>
+                      <el-button class="resource-update-button" v-if="resourceVersions?.ffmpeg.outdated" size="small" type="primary" plain :loading="resourceUpdating === 'ffmpeg'" @click="updateResource('ffmpeg')">
+                        立即更新
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+                <div class="inline-actions">
+                  <el-button :loading="resourceChecking" @click="checkResourceVersions">检查更新</el-button>
+                  <span class="inline-note" :class="resourceCheckState">{{ resourceCheckText }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <template v-else-if="section.key === 'notify'">
             <div class="setting-row">
               <div class="setting-copy">
@@ -339,9 +388,9 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import QRCode from 'qrcode'
 import { useSettingsStore } from '../stores/settings.store'
-import type { AppSettings, BiliLoginState, TranslateProfile } from '../../../shared/types'
+import type { AppSettings, BiliLoginState, TranslateProfile, VersionCheckResult } from '../../../shared/types'
 
-type SectionKey = 'download' | 'cookie' | 'bilibili' | 'network' | 'translate' | 'notify'
+type SectionKey = 'download' | 'cookie' | 'bilibili' | 'network' | 'resources' | 'translate' | 'notify'
 type ProviderKey = 'deepseek' | 'minimax' | 'moonshot' | 'zhipu' | 'xiaomi' | 'custom'
 
 interface ProviderPreset {
@@ -369,6 +418,7 @@ const sections: Array<{ key: SectionKey; label: string; description: string }> =
   { key: 'cookie', label: 'Cookie', description: '为需要登录权限的网站提供本地 Cookie。' },
   { key: 'bilibili', label: 'B站登录', description: '扫码登录后，可访问需要账号权限的内容。' },
   { key: 'network', label: '网络', description: '配置代理，并测试当前网络连接。' },
+  { key: 'resources', label: '资源', description: '检查内置下载和媒体处理组件的版本。' },
   { key: 'translate', label: '翻译', description: '配置标题、描述和字幕的翻译方案。' },
   { key: 'notify', label: '通知', description: '设置下载完成后的提醒方式。' }
 ]
@@ -401,6 +451,12 @@ const biliPollTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const proxyTesting = ref(false)
 const proxyTestState = ref<'idle' | 'success' | 'error'>('idle')
 const proxyTestText = ref('未测试')
+
+const resourceVersions = ref<VersionCheckResult | null>(null)
+const resourceChecking = ref(false)
+const resourceUpdating = ref<'yt-dlp' | 'ffmpeg' | null>(null)
+const resourceCheckState = ref<'idle' | 'success' | 'error'>('idle')
+const resourceCheckText = ref('尚未检查')
 
 const saveState = ref<'idle' | 'saving' | 'error'>('idle')
 const savingBusy = ref(false)
@@ -555,6 +611,55 @@ async function refreshMeta() {
     version.value = await window.api.getAppVersion()
   } catch {
     version.value = '1.0.0'
+  }
+}
+
+async function checkResourceVersions() {
+  if (resourceChecking.value) return
+  resourceChecking.value = true
+  resourceCheckState.value = 'idle'
+  resourceCheckText.value = '检查中...'
+
+  try {
+    const result = await window.api.checkVersions()
+    resourceVersions.value = result
+    const outdated = result.ytDlp.outdated || result.ffmpeg.outdated
+    resourceCheckState.value = outdated ? 'error' : 'success'
+    resourceCheckText.value = outdated ? '检测到资源更新' : '资源已是最新'
+  } catch (error) {
+    resourceCheckState.value = 'error'
+    resourceCheckText.value = error instanceof Error ? error.message : '检查失败，请稍后重试'
+  } finally {
+    resourceChecking.value = false
+  }
+}
+
+async function updateResource(resource: 'yt-dlp' | 'ffmpeg') {
+  if (resourceUpdating.value) return
+  resourceUpdating.value = resource
+  resourceCheckState.value = 'idle'
+  resourceCheckText.value = `正在下载并替换 ${resource}...`
+
+  try {
+    const result = await window.api.updateResource(resource)
+    if (resourceVersions.value) {
+      const key = resource === 'yt-dlp' ? 'ytDlp' : 'ffmpeg'
+      resourceVersions.value[key] = {
+        ...resourceVersions.value[key],
+        current: result.version,
+        latest: result.version,
+        outdated: false
+      }
+    }
+    resourceCheckState.value = 'success'
+    resourceCheckText.value = `${resource} 更新完成`
+    ElMessage.success(`${resource} 已下载并替换成功`)
+  } catch (error) {
+    resourceCheckState.value = 'error'
+    resourceCheckText.value = error instanceof Error ? error.message : '资源更新失败'
+    ElMessage.error(resourceCheckText.value)
+  } finally {
+    resourceUpdating.value = null
   }
 }
 
@@ -891,9 +996,19 @@ function formatDateTime(value?: string) {
   })
 }
 
+function formatResourceVersion(value: string | undefined, resource: 'yt-dlp' | 'ffmpeg'): string {
+  if (!value || value === 'unknown') return '未知'
+  if (resource === 'ffmpeg') {
+    const match = value.match(/\bversion\s+([^\s]+)/i)
+    if (match?.[1]) return match[1]
+  }
+  return value.trim().split(/\s+/)[0]
+}
+
 onMounted(async () => {
   await loadDraft()
   await refreshMeta()
+  await checkResourceVersions()
   await refreshBiliState()
   await checkBiliStatus()
 })
@@ -1040,6 +1155,15 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
+.resource-setting-row {
+  display: block;
+  padding-top: 16px;
+}
+
+.resource-control {
+  width: 100%;
+}
+
 .status-grid {
   width: 100%;
   display: grid;
@@ -1064,13 +1188,98 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
+.resource-list {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 58px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--vb-border-light);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--vb-bg-soft), var(--vb-bg-surface));
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.resource-item:hover {
+  border-color: rgba(108, 92, 231, 0.28);
+  box-shadow: 0 5px 14px rgba(44, 39, 82, 0.06);
+}
+
+.resource-item > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.resource-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resource-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.resource-item > div:first-child > span {
+  color: var(--vb-text-tertiary);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.resource-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.resource-dot--purple { background: #7566e8; }
+.resource-dot--orange { background: #e79a43; }
+
+.resource-actions :deep(.resource-update-button) {
+  min-width: 76px;
+  height: 30px;
+  font-weight: 500;
+}
+
+.resource-actions :deep(.el-button--primary.is-plain) {
+  color: var(--vb-primary);
+  border-color: rgba(108, 92, 231, 0.28);
+  background: rgba(108, 92, 231, 0.06);
+}
+
+.resource-actions :deep(.el-button--primary.is-plain:hover),
+.resource-actions :deep(.el-button--primary.is-plain:focus) {
+  color: #fff;
+  border-color: var(--vb-primary);
+  background: var(--vb-primary);
+}
+
 .inline-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
 }
 
 .inline-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
   font-size: 12px;
   color: var(--vb-text-tertiary);
 }

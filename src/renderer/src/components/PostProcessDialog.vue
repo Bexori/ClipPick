@@ -31,40 +31,13 @@
 
       <el-divider />
 
-      <div class="type-switch">
-        <button
-          type="button"
-          :class="{ active: processType === 'convert' }"
-          @click="processType = 'convert'"
-        >
-          格式转换
-        </button>
-        <button
-          type="button"
-          :class="{ active: processType === 'extract-audio' }"
-          @click="processType = 'extract-audio'"
-        >
-          提取音频
-        </button>
-      </div>
-
       <el-form label-width="80px" class="process-form">
         <el-form-item label="输出格式">
           <el-select v-model="outputFormat" style="width: 100%">
-            <template v-if="processType === 'convert'">
-              <el-option label="MP4 (H.264)" value="mp4" />
-              <el-option label="MKV" value="mkv" />
-              <el-option label="WebM" value="webm" />
-              <el-option label="AVI" value="avi" />
-            </template>
-            <template v-else>
-              <el-option label="MP3 (320kbps)" value="mp3" />
-              <el-option label="AAC" value="aac" />
-              <el-option label="FLAC (无损)" value="flac" />
-              <el-option label="WAV" value="wav" />
-              <el-option label="Opus" value="opus" />
-              <el-option label="M4A" value="m4a" />
-            </template>
+            <el-option label="MP4 (H.264)" value="mp4" />
+            <el-option label="MKV" value="mkv" />
+            <el-option label="WebM" value="webm" />
+            <el-option label="AVI" value="avi" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -107,7 +80,6 @@ const emit = defineEmits<{
   'update:visible': [value: boolean]
 }>()
 
-const processType = ref<'convert' | 'extract-audio'>('convert')
 const outputFormat = ref('mp4')
 const processing = ref(false)
 const ffmpegProgress = ref(0)
@@ -120,10 +92,6 @@ let unsubComplete: (() => void) | null = null
 let unsubError: (() => void) | null = null
 
 const canProcess = computed(() => Boolean(resolvedInfo.value?.ok && !processing.value))
-
-watch(processType, (val) => {
-  outputFormat.value = val === 'convert' ? 'mp4' : 'mp3'
-})
 
 watch(() => props.visible, async (val) => {
   if (val) {
@@ -186,17 +154,10 @@ async function handleStart() {
   ffmpegError.value = ''
 
   try {
-    if (processType.value === 'convert') {
-      await window.api.convertVideo({
-        inputPath,
-        outputFormat: outputFormat.value
-      })
-    } else {
-      await window.api.extractAudio({
-        inputPath,
-        outputFormat: outputFormat.value
-      })
-    }
+    await window.api.convertVideo({
+      inputPath,
+      outputFormat: outputFormat.value
+    })
   } catch (e: any) {
     processing.value = false
     ffmpegError.value = e.message || '处理失败'

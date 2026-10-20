@@ -19,11 +19,6 @@ const router = createRouter({
       component: () => import('../views/SavedUrls.vue')
     },
     {
-      path: '/audio-extract',
-      name: 'AudioExtract',
-      component: () => import('../views/AudioExtract.vue')
-    },
-    {
       path: '/settings',
       name: 'Settings',
       component: () => import('../views/Settings.vue')
